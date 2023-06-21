@@ -1,0 +1,74 @@
+{
+    "ignore": [
+        // same format as .gitignore
+        // "*.css"
+        // if files are ignored, build will create ./ignore-list.txt
+    ],
+    "minify": true,
+    "streams": {
+        "style.css": {
+            // "ignore": [], // ignore files from this stream
+            // "priority": [], // put these files at the top of this stream
+            "files": [
+                // adding --ignore-build to the end of a url will prevent it from being added to the build.ext or build.min.ext
+                // http/https urls are ignored by default, to add them to the build, add to the end.
+                // It will still append them above the build.ext or build.min.ext in the html though
+                // If you want to remove something, just comment it out here
+
+                // dependencies
+                "https://cdn.jsdelivr.net/npm/bootstrap@5.2.1/dist/css/bootstrap.min.css",
+                "https://fonts.googleapis.com/icon?family=Material+Icons",
+                "https://cdn.datatables.net/v/dt/dt-1.11.5/datatables.min.css",
+                "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css",
+                "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css",
+                "https://cdn.jsdelivr.net/gh/Eonasdan/tempus-dominus@master/dist/css/tempus-dominus.css",
+                // entire folder
+                "../static/css" // ,
+                // can do scss
+                // "../static/scss/style.scss"
+                // can also do specific files
+            ]
+        },
+        "script.js": {
+            // "ignore": [], // ignore files from this stream
+            // "priority": [], // put these files at the top of this stream
+            "files": [
+                "/socket.io/socket.io.js --ignore-build",
+                "https://code.jquery.com/jquery-3.1.1.min.js",
+                "https://cdn.datatables.net/v/dt/dt-1.11.5/datatables.min.js",
+                "https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.2/dist/umd/popper.min.js",
+                "https://cdn.jsdelivr.net/gh/Eonasdan/tempus-dominus@master/dist/js/tempus-dominus.js",
+                "https://cdnjs.cloudflare.com/ajax/libs/interact.js/1.10.17/interact.min.js",
+                "https://cdn.jsdelivr.net/npm/chart.js",
+                "https://cdn.jsdelivr.net/npm/apexcharts",
+                "https://cdn.jsdelivr.net/npm/chartjs-plugin-trendline@1.0.2/src/chartjs-plugin-trendline.min.js",
+                "https://cdn.jsdelivr.net/npm/tables-js/1.0/tables.min.js",
+
+
+                "https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js",
+                "https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.min.js",
+                "https://cdnjs.cloudflare.com/ajax/libs/bootstrap-colorpicker/3.2.0/js/bootstrap-colorpicker.min.js",
+
+                // ts folders (have their own tsconfig.json)
+                "[ts]../static/js/submodules/canvas",
+                "[ts]../static/js/submodules/colors",
+                "[ts]../static/js/submodules/custom-bootstrap/src",
+
+                // all js files in these folders (no ts)
+                "[ts]../static/js/top",
+                "[ts]../static/js/bottom"
+
+                // specific files
+            ]
+        },
+        "lite.js": {
+            "files": [
+                "https://code.jquery.com/jquery-3.1.1.min.js",
+                "https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js",
+                "https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.min.js",
+                "https://cdnjs.cloudflare.com/ajax/libs/bootstrap-colorpicker/3.2.0/js/bootstrap-colorpicker.min.js"
+            ]
+        }
+    },
+    "buildDir": "../static/build/"
+}

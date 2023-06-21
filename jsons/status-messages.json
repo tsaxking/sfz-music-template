@@ -1,0 +1,187 @@
+{
+    // ▄▀▄ ▄▀▀ ▄▀▀ ▄▀▄ █ █ █▄ █ ▀█▀ ▄▀▀ 
+    // █▀█ ▀▄▄ ▀▄▄ ▀▄▀ ▀▄█ █ ▀█  █  ▄█▀ 
+
+    "account.created": {
+        "title": "Accounts",
+        "message": "Your account has been created",
+        "status": "success",
+        "code": 200,
+        "instructions": "You will be notified when your account has been verified."
+    },
+    "account.verificationSuccessful": {
+        "title": "Accounts",
+        "message": "Verification successful",
+        "status": "success",
+        "code": 200,
+        "instructions": ""
+    },
+    "account.usernameTaken": {
+        "title": "Accounts",
+        "message": "Username already taken",
+        "status": "error",
+        "code": 404,
+        "instructions": ""
+    },
+    "account.emailTaken": {
+        "title": "Accounts",
+        "message": "Email already taken",
+        "status": "error",
+        "code": 404,
+        "instructions": ""
+    },
+    "account.invalidEmail": {
+        "title": "Accounts",
+        "message": "Invalid email",
+        "status": "error",
+        "code": 404,
+        "instructions": ""
+    },
+    "account.invalidPassword": {
+        "title": "Accounts",
+        "message": "Invalid password",
+        "status": "error",
+        "code": 404,
+        "instructions": ""
+    },
+    "account.incorrectPassword": {
+        "title": "Accounts",
+        "message": "Incorrect password",
+        "status": "error",
+        "code": 404,
+        "instructions": ""
+    },
+    "account.invalidUsername": {
+        "title": "Accounts",
+        "message": "Invalid username",
+        "status": "error",
+        "code": 404,
+        "instructions": ""
+    },    
+    "account.passwordMismatch": {
+        "title": "Accounts",
+        "message": "Passwords do not match",
+        "status": "error",
+        "code": 404,
+        "instructions": ""
+    },
+    "account.notLoggedIn": {
+        "title": "Accounts",
+        "message": "Not logged in",
+        "status": "error",
+        "code": 401,
+        "instructions": "",
+        "redirect": "/account/sign-in"
+    },
+    "account.notFound": {
+        "title": "Accounts",
+        "message": "Account not found",
+        "status": "error",
+        "code": 404,
+        "instructions": ""
+    },
+    "account.cannotRejectVerified": {
+        "title": "Accounts",
+        "message": "Cannot reject a verified account",
+        "status": "error",
+        "code": 404,
+        "instructions": ""
+    },
+    "account.invalidUsernameOrPassword": {
+        "title": "Accounts",
+        "message": "Invalid username or password",
+        "status": "error",
+        "code": 404,
+        "instructions": ""
+    },
+    "account.notVerified": {
+        "title": "Accounts",
+        "message": "Account not verified",
+        "status": "error",
+        "code": 401,
+        "instructions": "Please wait until your account is verified."
+    },
+    "account.loggedIn": {
+        "title": "Accounts",
+        "message": "You have been logged in",
+        "status": "success",
+        "code": 200,
+        "instructions": "",
+        "redirect": "/dashboard"
+    },
+    "account.cannotEditSelf": {
+        "title": "Accounts",
+        "message": "You cannot manage your own account",
+        "status": "error",
+        "code": 404,
+        "instructions": ""
+    },
+    "account.serverError": {
+        "title": "Accounts",
+        "message": "Server error",
+        "status": "majorError",
+        "code": 500,
+        "instructions": ""
+    },
+    "account.alreadyLoggedIn": {
+        "title": "Accounts",
+        "message": "Already logged in",
+        "status": "error",
+        "code": 404,
+        "instructions": ""
+    },
+
+
+
+
+        
+    // ▄▀▄ █▀▄ █▄ ▄█ █ █▄ █ 
+    // █▀█ █▄▀ █ ▀ █ █ █ ▀█ 
+
+    "admin.invalidKey": {
+        "title": "Admin",
+        "message": "Invalid key",
+        "status": "error",
+        "code": 4031,
+        "instructions": ""
+    },
+
+
+
+
+
+    // █▀▄ ██▀ █▀▄ █▄ ▄█ █ ▄▀▀ ▄▀▀ █ ▄▀▄ █▄ █ ▄▀▀ 
+    // █▀  █▄▄ █▀▄ █ ▀ █ █ ▄█▀ ▄█▀ █ ▀▄▀ █ ▀█ ▄█▀ 
+
+    "permissions.invalid": {
+        "title": "Permissions",
+        "message": "Invalid permissions",
+        "status": "error",
+        "code": 401,
+        "instructions": "If you are seeing this, you do not have the required permissions to access this resource."
+    },
+    "permissions.error": {
+        "title": "Permissions",
+        "message": "Error checking permissions",
+        "status": "majorError",
+        "code": 500,
+        "instructions": "If you are seeing this, you do not have the required permissions to access this resource."
+    },
+    "roles.invalid": {
+        "title": "Roles",
+        "message": "Invalid roles",
+        "status": "error",
+        "code": 401,
+        "instructions": "If you are seeing this, you do not have the required roles to access this resource."
+    },
+
+
+
+    "unknown": {
+        "title": "Unknown",
+        "message": "Unknown error",
+        "status": "error",
+        "code": 500,
+        "instructions": "This is an unknown error. Please try again later."
+    }
+}

@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Tatorscout: Admin</title>
+
+    <link rel="icon" href="../static/pictures/tators-logo.jpg">
+    <link href="style.css" rel="stylesheet">
+</head>
+
+<body>
+    <header>
+        <nav class="bg-dark">
+            <ul class="nav"></ul>
+        </nav>
+    </header>
+    <main>
+        <div id="server-key" data-server-key="{serverKey}"></div>
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-6">
+                    <h1 id="table-name"></h1>
+                </div>
+                <div class="col-6">
+                    <!-- Checkbox -->
+                    <label for="">
+                        <input type="checkbox" id="use-tba">
+                        Use TBA
+                    </label>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-3">
+                    <!-- Page Arrows -->
+                    <div class="d-flex justify-content-center">
+                        <button id="prev-page" class="btn btn-light">
+                            <i class="material-icons">chevron_left</i>
+                        </button>
+                        <p>
+                            <span id="page-number"></span> /
+                            <span id="page-count"></span>
+                        </p>
+                        <button id="next-page" class="btn btn-light">
+                            <i class="material-icons">chevron_right</i>
+                        </button>
+                    </div>
+                </div>
+                <div class="col-9">
+                    <!-- Search Box -->
+                    <div class="d-flex justify-content-end">
+                        <input id="search-box" type="text" class="form-control" placeholder="Search">
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="table-responsive">
+                    <table id="database" class="table table-dark table-striped"></table>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-12">
+                    <div class="d-flex justify-content-end">
+                        <span id="total-rows"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    <script>
+        const table = document.querySelector('table');
+        const {
+            serverKey
+        } = document.querySelector('#server-key').dataset;
+
+        let currentTable,
+            currentTableData,
+            start = 0,
+            end = 10,
+            currentHeaders,
+            numRowsReceive = 10;
+
+        (async() => {
+            const tables = await requestFromServer({
+                url: '/admin/database',
+                method: 'POST'
+            });
+
+            const runSearch = async() => {
+
+                const {
+                    rows,
+                    pageInfo,
+                    filteredHeaders,
+                    hideCols
+                } = await requestFromServer({
+                    url: '/admin/table',
+                    method: 'POST',
+                    body: {
+                        table: currentTable,
+                        range: {
+                            start: start ? start : 0,
+                            end: end ? end : 10
+                        },
+                        serverKey,
+                        search: document.querySelector('#search-box').value,
+                        tbaRequest: document.querySelector('#use-tba').checked
+                    }
+                });
+
+                const {
+                    numRows,
+                    numOutputRows,
+                    numPages,
+                    pageNum,
+                    newStart,
+                    newEnd
+                } = pageInfo;
+
+                start = newStart;
+                end = newEnd;
+
+                document.querySelector('#table-name').innerText = currentTable;
+                document.querySelector('#page-number').innerText = pageNum;
+                document.querySelector('#page-count').innerText = numPages;
+                document.querySelector('#total-rows').innerText = `Viewing ${numOutputRows} of ${numRows} rows`;
+
+                const usedHeaders = currentHeaders.filter(h => {
+                    return !hideCols.map(_h => _h.toLowerCase()).includes(h.toLowerCase());
+                });
+
+                setTable(table, usedHeaders.map(h => {
+                    return {
+                        title: (() => {
+                            // convert camel case into title case with space in between
+
+                            // for (let i = 0; i <= h.length; i++) {
+                            //     // console.log(i);
+                            //     if (i == 0) {
+                            //         h = h.replace(h[i], h[i].toUpperCase());
+                            //     } else if (/^[A-Z]/.test(h[i]) === true && /^_/.test(h[i - 1]) === false) {
+                            //         h = h.replace(h[i], " " + h[i].toUpperCase());
+                            //         i++;
+                            //     }
+                            // }
+                            return h;
+
+                        })(),
+                        getData: (row) => {
+                            if (h == 'change') {
+                                // create save and delete buttons
+
+                                // create save button
+                                const saveButton = document.createElement('button');
+                                saveButton.classList.add('btn', 'btn-success');
+                                saveButton.innerText = 'Save';
+                                saveButton.addEventListener('click', async() => {
+                                    return;
+                                    const data = {};
+
+                                    Object.keys(currentTableData.columns).forEach((header) => {
+                                        const tr = saveButton.closest('tr');
+
+                                        const {
+                                            type
+                                        } = currentTableData.columns[header];
+
+                                        switch (type) {
+                                            case 'text':
+                                                break;
+                                            case 'number':
+                                                break;
+                                            case 'boolean':
+                                                break;
+                                            case 'json':
+                                                break;
+                                        }
+                                    });
+
+                                    await requestFromServer({
+                                        url: '/admin/database',
+                                        method: 'POST',
+                                        data: {
+                                            table: t.table,
+                                            data,
+                                            serverKeys
+                                        }
+                                    });
+                                });
+
+                                // create delete button
+                                const deleteButton = document.createElement('button');
+                                deleteButton.classList.add('btn', 'btn-danger');
+                                deleteButton.innerText = 'Delete';
+                                deleteButton.addEventListener('click', async() => {
+                                    return;
+                                    // get primaryKeys
+                                    const primaryKeys = [];
+                                });
+
+                                // create button container
+                                const buttonContainer = document.createElement('div');
+                                buttonContainer.classList.add('btn-group');
+                                buttonContainer.appendChild(saveButton);
+                                buttonContainer.appendChild(deleteButton);
+
+                                return buttonContainer;
+                            }
+
+                            return row[h];
+                            console.log(h);
+                            const {
+                                type,
+                                edit,
+                                jsonType
+                            } = currentTableData.columns[h]
+                            if (!edit) {
+                                const span = document.createElement('span');
+                                span.innerText = row[h];
+
+                                span.style.width = '200px';
+
+                                return span;
+                            } else {
+                                switch (type) {
+                                    case 'text':
+                                        const input = document.createElement('input');
+                                        input.setAttribute('type', 'text');
+                                        input.value = row[h];
+                                        input.dataset.name = h;
+                                        input.classList.add('form-control');
+
+                                        input.style.width = '100px';
+
+                                        return input;
+                                    case 'json':
+                                        return JSON.stringify(JSON.parse(row[h]), null, 2);
+                                        // recursively create inputs for json
+                                        let jsonData;
+                                        try {
+                                            jsonData = JSON.parse(row[h]);
+                                        } catch {
+                                            return row[h];
+                                        }
+
+                                        if (jsonType == 'expandable') {
+                                            const textarea = document.createElement('textarea');
+                                            textarea.value = row[h];
+                                            textarea.classList.add('form-control');
+                                            textarea.dataset.name = h;
+                                            textarea.style.width = '200px'
+
+
+                                            return textarea;
+                                        }
+
+
+                                        const parseObject = (obj) => {
+                                            // console.log('Parsing object', obj);
+                                            const container = document.createElement('div');
+                                            container.classList.add('container');
+
+                                            Object.keys(obj).forEach(k => {
+                                                const row = document.createElement('div');
+                                                row.classList.add('row');
+
+                                                const key = document.createElement('div');
+                                                key.classList.add('col-2');
+                                                key.innerText = k;
+
+                                                const value = document.createElement('div');
+                                                value.classList.add('col-10');
+
+                                                if (Array.isArray(obj[k])) {
+                                                    value.appendChild(parseArray(obj[k]));
+                                                } else if (typeof obj[k] == 'object') {
+                                                    value.appendChild(parseObject(obj[k]));
+                                                } else {
+                                                    const input = document.createElement('input');
+                                                    input.setAttribute('type', 'text');
+                                                    input.value = obj[k];
+                                                    input.classList.add('form-control');
+                                                    input.style.width = '100px';
+                                                    input.dataset.name = `${h}.${k}`;
+
+                                                    value.appendChild(input);
+                                                }
+
+                                                row.appendChild(key);
+                                                row.appendChild(value);
+                                                container.appendChild(row);
+                                            });
+
+                                            return container;
+                                        }
+
+                                        const parseArray = (arr) => {
+                                            // console.log('Parsing array', arr);
+                                            const container = document.createElement('div');
+                                            container.classList.add('container');
+
+                                            arr.forEach((a, i) => {
+                                                const row = document.createElement('div');
+                                                row.classList.add('row');
+
+                                                const value = document.createElement('div');
+                                                value.classList.add('col-10');
+
+                                                if (Array.isArray(a)) {
+                                                    const input = document.createElement('input');
+                                                    input.setAttribute('type', 'text');
+                                                    input.value = a;
+                                                    input.classList.add('form-control');
+                                                    input.style.width = '100px';
+                                                    input.dataset.name = `${h}[${i}]`;
+                                                    value.appendChild(input);
+                                                } else if (typeof a == 'object') {
+                                                    value.appendChild(parseObject(a));
+                                                } else {
+                                                    const input = document.createElement('input');
+                                                    input.setAttribute('type', 'text');
+                                                    input.value = a;
+                                                    input.classList.add('form-control');
+                                                    input.style.width = '100px';
+                                                    input.dataset.name = `${h}[${i}]`;
+                                                    value.appendChild(input);
+                                                }
+
+                                                row.appendChild(value);
+                                                container.appendChild(row);
+                                            });
+
+                                            return container;
+                                        }
+
+                                        if (Array.isArray(jsonData)) {
+                                            return parseArray(jsonData);
+                                        } else {
+                                            return parseObject(jsonData);
+                                        }
+                                    case 'number':
+                                        const numberInput = document.createElement('input');
+                                        numberInput.setAttribute('type', 'number');
+                                        numberInput.value = row[h];
+                                        numberInput.classList.add('form-control');
+
+                                        numberInput.style.width = '100px';
+
+                                        return numberInput;
+                                    case 'boolean':
+                                        const booleanInput = document.createElement('input');
+                                        booleanInput.setAttribute('type', 'checkbox');
+                                        booleanInput.checked = row[h];
+                                        booleanInput.classList.add('form-control');
+
+                                        return booleanInput;
+                                }
+                            }
+                        },
+                        tdClasses: [],
+                        tooltip: currentTableData.columns[h] ? currentTableData.columns[h].description : null,
+                        tdTooltip: (row, header) => {
+                            if (!currentTableData.columns[h] ? currentTableData.columns[h].tbaTooltip : null) return;
+                            const {
+                                tbaInfo
+                            } = row;
+
+                            if (tbaInfo) {
+                                console.log(tbaInfo[header]);
+                                return tbaInfo[header];
+                            }
+                        }
+                    }
+                }), rows, {
+                    colGroup: filteredHeaders.map(fh => {
+                        return {
+                            index: usedHeaders.findIndex(h => h.toLowerCase() == fh.toLowerCase()),
+                            classes: [
+                                'text-info'
+                            ]
+                        }
+                    })
+                });
+            }
+
+            document.querySelector('#search-box').addEventListener('change', runSearch);
+            document.querySelector('#search-box').addEventListener('keydown', (e) => {
+                if (e.key == 'Enter') {
+                    runSearch();
+                }
+            });
+
+            document.querySelector('#prev-page').addEventListener('click', () => {
+                start -= numRowsReceive;
+                end -= numRowsReceive;
+
+                console.log('Prev page', start, end);
+
+                if (start < 0) {
+                    start = 0;
+                    end = 10;
+                    return;
+                }
+
+                runSearch();
+            });
+            document.querySelector('#next-page').addEventListener('click', () => {
+                start += numRowsReceive;
+                end += numRowsReceive;
+
+                runSearch();
+            });
+
+            tables.forEach(t => {
+                const {
+                    headers,
+                    data
+                } = t;
+
+
+
+                headers.unshift('change');
+
+                // create bootstrap nav link
+                const navLink = document.createElement('a');
+                navLink.classList.add('nav-link');
+                navLink.setAttribute('href', `#${t.table}`);
+                navLink.setAttribute('data-toggle', 'tab');
+                navLink.setAttribute('role', 'tab');
+                navLink.setAttribute('aria-controls', t.table);
+                navLink.setAttribute('aria-selected', 'false');
+                navLink.innerText = t.table;
+
+                // create bootstrap nav item
+                const navItem = document.createElement('li');
+                navItem.classList.add('nav-item');
+                navItem.appendChild(navLink);
+
+                navItem.addEventListener('click', () => {
+                    currentTable = t.table;
+                    currentHeaders = headers;
+                    currentTableData = data;
+                    runSearch();
+                });
+
+                document.querySelector('nav ul').appendChild(navItem);
+            });
+        })();
+    </script>
+
+
+<!-- Bootstrap -->
+    <script src="lite.js"></script>
+</body>
+
+</html>

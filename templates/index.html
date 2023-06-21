@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <title>Tators</title>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="style.css">
+    <!-- description -->
+    <meta name="description" content="{{ description }}">
+    <!-- keywords -->
+    <meta name="keywords" content="{{ keywords }}">
+    <!-- Icon -->
+    <link rel="icon" href="../static/pictures/tators-logo.jpg">
+</head>
+
+<body>
+    <script src="script.js"></script>
+    <div id="contextmenu-container" class="d-none position-fixed bg-dark rounded shadow">
+        <!-- <div class="dropdown"> -->
+        <div id="contextmenu" class="bg-dark rounded"></div>
+        <!-- </div> -->
+    </div>
+
+    <!-- Alert Modal -->
+    <div class="modal fade" id="alert-modal" tabindex="-1" aria-labelledby="check-out-modal-label" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="check-out-modal-label">Your Alerts:</h5>
+                </div>
+                <div class="modal-body">
+                    <div class="container-fluid" id="alerts-container"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="fs-black text-light" id="loading-page">
+        <div class="fs-bg">
+            <div class="fs-fg">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p>&nbsp; Loading Pages...</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="fs-black text-light d-none" id="activity-popup">
+        <div class="fs-bg">
+            <div class="fs-fg">
+                <div class="container-fluid">
+                    <div class="row mb-2 p-5">
+                        <div class="progress p-0">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100" id="activity-progress-bar"></div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <h3 class="text-center" id="activity-countdown-container">Inactive, will redirect in: <span id="activity-countdown"></span></h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top shadow" id="top-navbar">
+        <div class="container-fluid">
+            <div class="d-flex justify-content-space-between w-100">
+                <!-- offcanvas trigger -->
+                <button class="navbar-toggler" type="button" data-bs-toggle="offcanvas" data-bs-target="#side-bar-nav" aria-controls="side-bar-nav">
+                    <span class="material-icons">menu</span>
+                <!-- offcanvas trigger -->
+                </button>
+                <!-- Brand -->
+                <span class="text-light me-auto">
+                    <a class="navbar-brand fw-bold">&nbsp;2122</a>&nbsp; 
+                    <span class="d-none">Hello, <span id="account-name" class="text-capitalize"></span></span>
+                    <i class="material-icons" id="latency">
+                        wifi
+                    </i>
+                </span>
+
+
+                <button type="button" class="d-none btn btn-primary position-relative me-2" data-bs-toggle="modal" data-bs-target="#alert-modal" id="alerts-button">
+                    <i class="material-icons">notifications</i>
+                        <span class="position-absolute top-0 badge rounded-pill bg-danger animate__animated animate__flash animate__infinite"><span id="num-alerts"></span> 
+                        <!-- <span class="visually-hidden">unread messages</span> -->
+                    </span>
+                </button>
+
+                <!-- Toggle navigation -->
+                <a class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="material-icons">menu</span>
+                </a>
+
+
+                <!-- Modal trigger button -->
+                <!-- <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#server-log-modal">
+                    <i class="material-icons">dns</i>
+                </button> -->
+                <div class="btn-group">
+                    <button class="btn btn-primary btn-sm" id="open-fullscreen">Fullscreen</button>
+                    <button class="btn btn-secondary btn-sm" id="tba-update">
+                        <span class="material-icons">
+                            sync
+                        </span>
+                    </button>
+                </div>
+            </div>
+
+
+            <!-- Navigation -->
+            <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                <select id="tator-year" class="form-select"></select>
+                <select id="tator-events" class="form-select"></select>
+
+
+                <!-- Search for something -->
+                <!-- <form class="d-flex ms-auto my-lg-0">
+                    <div class="input-group mx-1">
+                        <input type="text" class="form-control" placeholder="Search" aria-label="Recipient's username" aria-describedby="button-addon2" id="search-input">
+                        <button class="btn btn-outline-secondary" type="button" id="search-button">
+                            <i class="material-icons">search</i>
+                        </button>
+                    </div>
+                </form> -->
+
+                <!-- Account information -->
+                <!-- <ul class="navbar-nav mb-2 mb-lg-0">
+                    <li class="nav-item dropdown">
+                        {accountDropdown}
+                    </li>
+                </ul> -->
+            </div>
+        </div>
+    </nav>
+    <!-- End Navbar -->
+
+
+    <!-- Modal Body -->
+    <!-- if you want to close by clicking outside the modal, delete the last endpoint:data-bs-backdrop and data-bs-keyboard -->
+    <div class="modal fade" id="server-log-modal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" role="dialog" aria-labelledby="modalTitleId" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitleId">All Logs</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <pre id="server-log" class="bg-dark p-3 rounded w-100 p-3 text-light"></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar/offcanvas -->
+    <div class="offcanvas offcanvas-start bg-dark text-white sidebar-nav shadow" tabindex="-1" id="side-bar-nav" aria-labelledby="side-bar-navLabel">
+        <div class="offcanvas-body p-0">
+            <nav class="navbar-dark">
+                <ul class="navbar-nav">
+                    <repeat  id="navSections">
+                        <script cstr>
+                            if (type == 'navTitle') `
+                            <li>
+                                <h5 class="text-muted px-3 text-capitalize no-select">${title}</h5>
+                            </li>`; else `
+                            <li>
+                                <a href="${pathname}" class="nav-link px-5 toggle-elements no-select" data-toggle-class=".page" data-target="#${lowercaseTitle}" data-page="/${lowercaseTitle}">
+                                    <span class="me-2">
+                                        ${icon}
+                                        <span>${name}</span>
+                                    </span>
+                                </a>
+                            </li>`;
+                        </script>
+                    </repeat>
+                </ul>
+            </nav>
+        </div>
+    </div>
+    <!-- End Offcanvas -->
+
+    <!-- Chatbox -->
+    <div id="chatbox" class="d-none">
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <span class="fw-bold">Chat: <span id="num-chats" class="text-danger"></span></span>
+                    </div>
+                    <div>
+                        <select id="chat-room" class="form-select d-none">
+                            <option value="general">General</option>
+                            <option value="drive-team">Drive Team</option>
+                            <option value="scouting">Scouting</option>
+                            <option value="programming">Programming</option>
+                            <option value="mechanical">Mechanical</option>
+                            <option value="electrical">Electrical</option>
+                        </select>
+                    </div>
+                    <div>
+                        <i class="material-icons cursor-pointer" id="chat-icon">arrow_drop_up</i>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body d-none" id="chat-container">
+                <div class="container-fluid" id="chat-messages"></div>
+            </div>
+            <div class="card-footer d-none">
+                <div class="input-group">
+                    <input type="text" class="form-control" placeholder="Message" id="chat-input">
+                    <button class="btn btn-primary" id="chat-send">
+                        <i class="material-icons">send</i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Main part of the site -->
+    <main>
+        <repeat id="pagesRepeat">
+            <div class="container-fluid page pt-5 bg-light" id="{{ lowercaseTitle }}">
+                <div class="row mb-3">
+                    <h1 class="text-capitalize no-select">{{ title }}</h1>
+                </div>
+                <div class="mb-1 page-body" id="{{ prefix }}--dashboard-body">
+                    {{ content }}
+                </div>
+
+                <!-- Start of footer -->
+                <footer class="pb-5">
+                    <br>
+                    <hr class="dropdown-divider">
+                    <i>&copy; {{ year }} FIRST Robotics Competition Team 2122 | Team Tators </i>
+                </footer>
+            </div>
+        </repeat>
+    </main>
+    <!-- End of main -->
+
+    <iframe id="download" class="d-none"></iframe>
+</body>
+
+</html>

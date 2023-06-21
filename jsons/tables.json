@@ -1,0 +1,140 @@
+{
+    "Accounts": {
+        "columns": {
+            "username": {
+                "type": "string",
+                "primaryKey": true,
+                "description": "The username of the account",
+                "init": "username TEXT NOT NULL UNIQUE"
+            },
+            "key": {
+                "type": "string",
+                "description": "Hashed password of the account",
+                "init": "key TEXT NOT NULL"
+            },
+            "salt": {
+                "type": "string",
+                "description": "Salt used to hash the password",
+                "init": "salt TEXT NOT NULL"
+            },
+            "info": {
+                "type": "json",
+                "edit": true,
+                "description": "Additional information about the account",
+                "init": "info TEXT",
+                "default": "{}"
+            },
+            "roles": {
+                "type": "json",
+                "edit": true,
+                "jsonType": "expandable",
+                "description": "Roles of the account",
+                "init": "roles TEXT",
+                "default": "[]"
+            },
+            "name": {
+                "type": "string",
+                "edit": true,
+                "description": "Name of the account",
+                "init": "name TEXT NOT NULL"
+            },
+            "email": {
+                "type": "string",
+                "edit": true,
+                "description": "Email for the account",
+                "init": "email TEXT NOT NULL"
+            },
+            "verified": {
+                "type": "string",
+                "edit": true,
+                "description": "If the account has been verified (1 if it is)",
+                "init": "verified INTEGER NOT NULL"
+            },
+            "passwordChange": {
+                "type": "string",
+                "edit": false,
+                "description": "Password change request id",
+                "init": "passwordChange TEXT"
+            }
+        },
+        "rows": [{
+            "username": "admin",
+            "key": "",
+            "salt": "",
+            "info": {},
+            "roles": [
+                "admin"
+            ],
+            "name": "Admin",
+            "email": "",
+            "verified": 1
+        }, {
+            "username": "scout",
+            "key": "",
+            "salt": "",
+            "info": {},
+            "roles": [
+                "scout"
+            ],
+            "name": "Scout",
+            "email": "",
+            "verified": 1
+        }, {
+            "username": "viewer",
+            "key": "",
+            "salt": "",
+            "info": {},
+            "roles": [
+                "viewer"
+            ],
+            "name": "Viewer",
+            "email": "",
+            "verified": 1
+        }, {
+            "username": "mentor",
+            "key": "",
+            "salt": "",
+            "info": {},
+            "roles": [
+                "mentor"
+            ],
+            "name": "Mentor",
+            "email": "",
+            "verified": 1
+        }, {
+            "username": "developer",
+            "key": "",
+            "salt": "",
+            "info": {},
+            "roles": [
+                "developer"
+            ],
+            "name": "Developer",
+            "email": "",
+            "verified": 1
+        }, {
+            "username": "unverified",
+            "key": "",
+            "salt": "",
+            "info": {},
+            "roles": [
+                "user"
+            ],
+            "name": "Unverified",
+            "email": "",
+            "verified": 0
+        }, {
+            "username": "user",
+            "key": "",
+            "salt": "",
+            "info": {},
+            "roles": [
+                "user"
+            ],
+            "name": "User",
+            "email": "",
+            "verified": 1
+        }],
+        "description": "All accounts in the system"
+    }
+}
