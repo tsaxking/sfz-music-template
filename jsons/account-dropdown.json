@@ -1,0 +1,23 @@
+[
+    {
+        "title": "Manage Account",
+        "icon": "<i class=\"material-icons\">account_circle</i>",
+        "url": "/account/manage",
+        "type": "link"
+    },
+    {
+        "title": "Settings",
+        "icon": "<i class=\"material-icons\">manage_accounts</i>",
+        "url": "/account/settings",
+        "type": "link"
+    },
+    {
+        "type": "line"
+    },
+    {
+        "title": "Logout",
+        "icon": "<i class=\"material-icons\">logout</i>",
+        "url": "/account/logout",
+        "type": "link"
+    }
+]

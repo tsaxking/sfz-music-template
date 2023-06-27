@@ -271,7 +271,7 @@ async function runUpdates(updates: Update[]) {
 
     console.log('Last update:', new Date(lastUpdate).toLocaleString());
 
-    manifest.updates.push(...(await Promise.all(updates.map(async update => {
+    manifest.updates.push(...((await Promise.all(updates.map(async update => {
         const { name, description, test, execute } = update;
 
         const result = await test(new DB('main'));
@@ -289,7 +289,7 @@ async function runUpdates(updates: Update[]) {
                 date: Date.now()
             }
         }
-    }))).filter(Boolean));
+    }))).filter(Boolean)));
 
     fs.writeFileSync(path.resolve(__dirname, "../history/manifest.txt"), JSON.stringify(manifest, null, 4));
 }
@@ -368,6 +368,9 @@ const initEnv = () => {
         SENDGRID_API_KEY=""
 
         AUTO_SIGN_IN_USERNAME=""
+
+        ID_GENERATION_LINK=""
+        ID_GENERATION_KEY=""
     `);
 }
 

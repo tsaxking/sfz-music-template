@@ -1,59 +1,42 @@
-import Random from 'random-org';
-import { MAIN } from '../databases';
 import { config } from 'dotenv';
 import { v4 as uuidv4 } from 'uuid';
+import axios from 'axios';
+import * as fsPromises from 'fs/promises';
+import * as fs from 'fs';
 
 
 
 
 config();
 
-const getIds = async (n: number) => {
-    const tableQuery = `
-        CREATE TABLE IF NOT EXISTS ids (
-            id TEXT PRIMARY KEY,
-            used INTEGER DEFAULT 0
-        )
-    `;
+const {
+    ID_GENERATION_KEY,
+    ID_GENERATION_LINK
+} = process.env;
 
-    await MAIN.run(tableQuery);
 
-    const uuids = new Random({
-        apiKey: process.env.RANDOM_ORG_API_KEY || ''
-    });
+const getIds = async (n: number = 10): Promise<string[]> => {
+    if (ID_GENERATION_KEY && ID_GENERATION_LINK) {
+        ids.push(...(await axios.post(ID_GENERATION_LINK + '/uuid', {
+            apiKey: ID_GENERATION_KEY,
+            n
+        })).data as string[]);
 
-    uuids.generateUUIDs({
-        n
-    }).then(res => {
-        getIds(n);
-        const { data } = res.random;
-        ids = [...ids, ...data];
+        fsPromises.writeFile('./ids.txt', JSON.stringify(ids, null, 2));
 
-        const insertQuery = `
-            INSERT INTO ids (
-                id,
-                used
-            ) VALUES (
-                ?, ?
-            )
-        `;
-
-        Promise.all(data.map(id => {
-            return MAIN.run(insertQuery, [id, 0]);
-        }));
-
-    })
-    .catch(_ => console.log('Quota Filled Today, or other error'));
+        return ids;
+    }
+    return new Array(Math.round(n)).fill('').map(() => uuidv4());
 }
 
 let ids: string[] = [];
 (async () => {
-    const getQuery = `
-        SELECT * 
-        FROM ids
-    `;
-
-    ids = await MAIN.all(getQuery) || []; 
+    if (fs.existsSync('./ids.txt')) {
+        ids = JSON.parse(await fsPromises
+            .readFile('./ids.txt', 'utf-8')) as string[];
+    } else {
+        ids = await getIds(10);
+    }
 })();
 
 
@@ -63,17 +46,17 @@ type uuidOptions = {
 };
 
 
-const getId = ():string => {
+const getId = (): string => {
     if (ids.length) {
-        const id = ids[0];
+        const id = ids.shift();
+        if (!id) return uuidv4();
 
-        const setUsedQuery = `
-            UPDATE ids
-            SET used = 1
-            WHERE id = ?
-        `;
+        if (ids.length < 5) {
+            getIds(10).then((newIds) => {
+                ids.push(...newIds);
+            });
+        }
 
-        MAIN.run(setUsedQuery, [id]);3
         return id;
     }
 
@@ -82,7 +65,11 @@ const getId = ():string => {
 
 
 
-
+/**
+ * Returns a unique id
+ * @param {uuidOptions} options 
+ * @returns {string} unique id
+ */
 export const uuid = (options?: uuidOptions) => {
     // random string, only letters
     let id: string;

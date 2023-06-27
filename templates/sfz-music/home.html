@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- <meta http-equiv="Content-Security-Policy" content="script-src 'self' {cspScripts}; style-src 'self' {cspStyles}; font-src 'self' {cspFonts};"> -->
+    <title>sfzMusic: Home</title>
+    <meta name="keywords" content="{{ keywords }}">
+    <meta name="description" content="{{ description }}">
+    <meta name="author" content="Taylor Reese King">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    {{ navbar }}
+    <div class="container-fluid" style="margin-top: 56px;">
+        <div class="row bg-primary text-light pb-3">
+            <div class="jumbotron jumbotron-fluid mt-2 main-cover">
+                <div class="container">
+                    <h1 class="display-4 text-center">Welcome to <span class="fw-bold">sfzMusic LLC</span></h1>
+                    <p class="lead text-center fst-italic fs-4">Focus on what you love</p>
+                    <div class="lead row mb-3">
+                        <div class="container-fluid">
+                            <div class="row">
+                                <div class="col-md-6 col-sm-12 col-xs-12">
+                                    <img src="../../static/pictures/website/sheet-music.jpg" class="w-100 rounded shadow">
+                                </div>
+                                <div class="col-md-6 col-sm-12 col-xs-12">
+                                    <h2 id="about-sfz">A quick summary:</h2>
+                                    <p>
+                                        sfzMusic LLC is a company geared towards helping music educators manage the administrative side of their lives so they can focus on what they do best: teaching music. We offer a variety of services to help you manage your studio, including a calendar,
+                                        lesson management, ensemble management, and more.
+                                    </p>
+                                    <a href="/dashboard" class="btn btn-secondary btn-lg">Get Started</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-xl-3 col-lg-3 col-md-6 col-sm-12 col-xs-12">
+                            <div class="card bg-danger">
+                                <div class="card-header">
+                                    <h5 class="card-title">
+                                        <i class="material-icons">dashboard</i>&nbsp; Dashboard
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <p class="card-text">
+                                        The dashboard is the main hub for all of your studio's needs. It includes a calendar, lesson management, and ensemble management.
+                                    </p>
+
+                                    <a href="/dashboard" class="btn btn-primary">Go</a>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <div class="col-xl-3 col-lg-3 col-md-6 col-sm-12 col-xs-12">
+                            <div class="card bg-success">
+                                <div class="card-header">
+                                    <h5 class="card-title">
+                                        <i class="material-icons">article</i>&nbsp; Blog
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <p class="card-text">
+                                        This blog is for our users and developers to share their thoughts and ideas. We hope you enjoy it!
+                                    </p>
+
+                                    <a href="/blog" class="btn btn-primary">Go</a>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <div class="col-xl-3 col-lg-3 col-md-6 col-sm-12 col-xs-12">
+                            <div class="card bg-navy">
+                                <div class="card-header">
+                                    <h5 class="card-title">
+                                        <i class="material-icons">build</i>&nbsp; Toolbox
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <p class="card-text">
+                                        <span class="fw-bold">sfzMusic Toolbox</span> is a collection of resources that don't quite fit into our dashboard services. These tools are free to use and are designed to help you in your endeavors!
+                                    </p>
+                                    <a href="/tools" class="btn btn-primary">Go</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-xl-3 col-lg-3 col-md-6 col-sm-12 col-xs-12">
+                            <div class="card bg-indigo">
+                                <div class="card-header">
+                                    <h5 class="card-title">
+                                        <i class="material-icons">contact_support</i>&nbsp; Contact Us!
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <p class="card-text">
+                                        If you have any questions, comments, or concerns, please feel free to contact us! We'd love to hear from you!
+                                        <br><br>
+                                        <a class="btn btn-primary" href="mailto:info@sfzMusic.org">
+                                            <i class="material-icons">email</i>
+                                        </a>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="parallax parallax-1 p-0">
+                <div class="container-fluid p-0">
+                    <div class="row m-0 mb-5 pb-3" style="background-color: hsla(210, 10%, 23%, 0.73);">
+                        <h1 class="text-center text-light mt-3" id="values">Our Values</h1>
+                    </div>
+                    <div class="row m-0 pb-5">
+                        <style>
+                            .value-card {
+                                height: 300px;
+                                border-radius: 50%;
+                                position: relative;
+                                background-color: hsla(216, 98%, 52%, 0.73);
+                            }
+                            
+                            .value-card p {
+                                position: absolute;
+                                top: 50%;
+                                left: 50%;
+                                transform: translate(-50%, -50%);
+                            }
+                        </style>
+                        <div class="col-lg-3 col-md-6 col-sm-12 d-flex justify-content-center" id="compassion-card">
+                            <div class="card value-card shadow">
+                                <div class="card-body text-light hover-grow">
+                                    <p class="fs-3">Compassion</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-md-6 col-sm-12 d-flex justify-content-center" id="persistence-card">
+                            <div class="card value-card shadow">
+                                <div class="card-body text-light hover-grow">
+                                    <p class="fs-3">Persistence</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-md-6 col-sm-12 d-flex justify-content-center" id="enterprise-card">
+                            <div class="card value-card shadow">
+                                <div class="card-body text-light hover-grow">
+                                    <p class="fs-3">Enterprise</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-md-6 col-sm-12 d-flex justify-content-center" id="flexibility-card">
+                            <div class="card value-card shadow">
+                                <div class="card-body text-light hover-grow">
+                                    <p class="fs-3">Flexibility</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row m-0">
+                        <div class="col-12">
+                            <div class="container">
+                                <div class="row p-5 rounded text-light d-none" style="background-color: hsla(210, 10%, 23%, 0.73);" id="value-description-row">
+                                    <h3 class="value-title text-center d-none">Compassion</h3>
+                                    <h3 class="value-title text-center d-none">Persistence</h3>
+                                    <h3 class="value-title text-center d-none">Enterprise</h3>
+                                    <h3 class="value-title text-center d-none">Flexibility</h3>
+
+                                    <p class="value-description d-none">
+                                        We care for your needs and will do our best to help you in any way we can. We are here to serve you!
+                                    </p>
+
+                                    <p class="value-description d-none">
+                                        Regardless of the situation, we will always do our best to help you. Our goal is not to just make a quick buck, but to help you in your endeavors.
+                                    </p>
+
+                                    <p class="value-description d-none">
+                                        We are constantly looking for new ways to improve our services, create new tools, and think outside the box. We strive to go where no one has gone before ;)
+                                    </p>
+
+                                    <p class="value-description d-none">
+                                        Your satisfaction is our top priority, we are more than willing to work with you to make sure you are happy with our services.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <script>
+                        document.querySelectorAll('.value-card').forEach(el => {
+                            // el.style.width = el.clientHeight + 'px';
+                            el.style.aspectRatio = '1/1';
+                            // el.style.height = el.style.width + 'px';
+                            hideElement(el);
+
+                            const showDescription = (index) => {
+                                const row = document.querySelector('#value-description-row');
+
+                                showElement(row);
+                                row.classList.add('animate__animated', 'animate__fadeIn');
+
+                                const titles = document.querySelectorAll('.value-title');
+                                const descriptions = document.querySelectorAll('.value-description');
+
+                                titles.forEach(el => {
+                                    hideElement(el);
+                                    el.classList.remove('animate__animated', 'animate__fadeInUp');
+                                });
+                                descriptions.forEach(el => {
+                                    hideElement(el);
+                                    el.classList.remove('animate__animated', 'animate__fadeInUp');
+                                });
+
+                                const title = titles[index];
+                                const description = descriptions[index];
+
+                                showElement(title);
+                                showElement(description);
+
+                                title.classList.add('animate__animated', 'animate__fadeInUp');
+                                description.classList.add('animate__animated', 'animate__fadeInUp');
+                            }
+
+                            el.addEventListener('click', () => {
+                                const index = Array.from(document.querySelectorAll('.value-card')).indexOf(el);
+                                showDescription(index);
+                            });
+
+                            el.addEventListener('mouseover', () => {
+                                const index = Array.from(document.querySelectorAll('.value-card')).indexOf(el);
+                                showDescription(index);
+                            });
+                        });
+                        let shown = false;
+                        document.addEventListener('scroll', () => {
+                            if (shown) return;
+                            const firstCard = document.querySelector('.value-card');
+
+                            if (isShown(firstCard)) {
+                                shown = true;
+                                const show = (el, delay) => {
+                                    setTimeout(() => {
+                                        showElement(el);
+                                        el.classList.add('animate__animated', 'animate__fadeInUp');
+                                    }, delay);
+                                }
+
+                                document.querySelectorAll('.value-card').forEach((el, i) => {
+                                    show(el, i * 200);
+                                });
+                            }
+                        });
+                    </script>
+                </div>
+                <!-- Compassion, Persistence, Enterprise, Flexibility -->
+            </div>
+        </div>
+    </div>
+    <footer class="text-{{ footerTextColor }} pt-5 pb-3 bg-{{ footerBackgroundColor }} w-100">
+        <div class="container">
+            <div class="row">
+                <i class="ps-5">&copy; sfzMusic LLC 2022</i>
+                <p class="ps-5">If you have questions or have spotted an issue, please contact us at <a href="mailto:info@sfzMusic.org">info@sfzMusic.org</a>!</p>
+            </div>
+            <div class="row">
+                <div class="container-fluid">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <ul class="list-style-none">
+                                <li>
+                                    <a href="/dashboard">Dashboard</a>
+                                </li>
+                                <li>
+                                    <a href="/about">About</a>
+                                </li>
+                                <li>
+                                    <a href="/about/policies">Policies</a>
+                                </li>
+                                <li>
+                                    <a href="/report">Report an issue</a>
+                                </li>
+                                <li>
+                                    <a href="/donate" class="link-danger">Make a donation!</a>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <!-- Donations -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+    
+
+    <script src="sfz-music.js"></script>
+
+    <script>
+        document.addEventListener('click', () => {
+            $('#homeNavbar').collapse('hide');
+        });
+    </script>
+</body>
+
+</html>

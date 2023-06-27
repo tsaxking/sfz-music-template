@@ -207,6 +207,11 @@ export function saveJSON(file: string, data: any): Promise<boolean> {
  * @type {*}
  */
 let builds: any = workerData?.builds || {};
+/**
+ * Description placeholder
+ *
+ * @type {*}
+ */
 const buildJSON = getJSONSync('../build/build.json');
 !buildJSON.buildDir.endsWith('/') && (buildJSON.buildDir += '/'); // make sure it ends with a slash 
 
@@ -360,8 +365,18 @@ const runBuilds = (template: string): string => {
 }
 
 
+/**
+ * Description placeholder
+ *
+ * @type {*}
+ */
 const templates = new Map<string, string>();
 
+/**
+ * Description placeholder
+ *
+ * @typedef {ConstructorOptions}
+ */
 type ConstructorOptions = {
     [key: string]: any;
 }
@@ -549,7 +564,7 @@ export function uploadMultipleFiles(files: File[]): Promise<void> {
  * @param {string} filename
  * @returns {*}
  */
-export function getUpload(filename: string) {
+export function getUpload(filename: string): Promise<any> {
     return new Promise((resolve, reject) => {
         fs.readFile(path.resolve(__dirname, '../uploads', filename), (err, data) => {
             if (err) reject(err);
@@ -616,6 +631,15 @@ type FileStreamOptions = {
 }
 
 
+export type CustomFile = {
+    id: string;
+    name: string;   
+    size: string;
+    type: string;
+    ext: string;
+    contentType: string;
+}
+
 /**
  * Description placeholder
  *
@@ -631,7 +655,7 @@ type CustomHeaderRequest = Request & {
     }
 
     on: (event: string, callback: (chunk: any) => void) => void;
-    file: any;
+    file: CustomFile;
 }
 
 /**
@@ -649,16 +673,14 @@ type CustomResponse = Response & {
  * @param {FileStreamOptions} opts
  * @returns {(req: any, res: any, next: any) => unknown}
  */
-export const fileStream = (opts: FileStreamOptions) => {
-    return async(req: CustomHeaderRequest, res: CustomResponse, next: NextFunction) => {
+export const fileStream = (opts: FileStreamOptions): NextFunction => {
+    const fn =  async(req: CustomHeaderRequest, res: CustomResponse, next: NextFunction) => {
         let { maxFileSize, extensions } = opts;
         maxFileSize = maxFileSize || 1000000;
 
         const generateFileId = () => {
             return uuid() + '-' + Date.now();
         }
-
-        let fileId = generateFileId();
         let {
             headers: {
                 'x-content-type': contentType,
@@ -682,11 +704,11 @@ export const fileStream = (opts: FileStreamOptions) => {
 
         if (!fileExt.startsWith('.')) fileExt = '.' + fileExt;
 
-
+        let fileId: string;
         // never overwrite files
-        while (fs.existsSync(path.resolve(__dirname, '../uploads', fileId + fileExt))) {
+        do {
             fileId = generateFileId();
-        }
+        } while (fs.existsSync(path.resolve(__dirname, '../uploads', fileId + fileExt)))
 
         const file = fs.createWriteStream(path.resolve(__dirname, '../uploads', fileId + fileExt));
 
@@ -699,6 +721,7 @@ export const fileStream = (opts: FileStreamOptions) => {
 
         req.on('end', () => {
             file.end();
+            file.close();
             req.file = {
                 id: fileId,
                 name: fileName,
@@ -718,6 +741,8 @@ export const fileStream = (opts: FileStreamOptions) => {
             })
         });
     }
+
+    return fn as unknown as NextFunction;
 }
 
 
@@ -804,6 +829,12 @@ export function openAllInFolder(dir: string, cb: FileCb, options: FileOpts = {})
 }
 
 
+/**
+ * Description placeholder
+ *
+ * @export
+ * @enum {number}
+ */
 export enum LogType {
     request = 'request',
     error = 'error',
@@ -811,12 +842,27 @@ export enum LogType {
     status = 'status'
 }
 
+/**
+ * Description placeholder
+ *
+ * @export
+ * @typedef {LogObj}
+ */
 export type LogObj = {
     [key: string]: string|number|boolean|undefined|null;
 }
 
 if (!fs.existsSync(path.resolve(__dirname, '../logs'))) fs.mkdirSync(path.resolve(__dirname, '../logs'));
 
+/**
+ * Description placeholder
+ *
+ * @export
+ * @async
+ * @param {LogType} type
+ * @param {LogObj} dataObj
+ * @returns {unknown}
+ */
 export async function log(type: LogType, dataObj: LogObj) {
     return new ObjectsToCsv([dataObj]).toDisk(
         path.resolve(__dirname, `../logs/${type}.csv`), 

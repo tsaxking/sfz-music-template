@@ -183,5 +183,55 @@
         "status": "error",
         "code": 500,
         "instructions": "This is an unknown error. Please try again later."
+    },
+
+
+
+
+
+    // █   █ ██▄ █▀▄ ▄▀▄ █▀▄ ▀▄▀ 
+    // █▄▄ █ █▄█ █▀▄ █▀█ █▀▄  █  
+
+    "library.new": {
+        "title": "Library",
+        "message": "New library created",
+        "status": "success",
+        "code": 200,
+        "instructions": ""
+    },
+    "library.notFound": {
+        "title": "Library",
+        "message": "Library not found",
+        "status": "error",
+        "code": 404,
+        "instructions": "Please use a valid library"
+    },
+    "library.success": {
+        "title": "Library",
+        "message": "Library updated",
+        "status": "success",
+        "code": 200,
+        "instructions": ""
+    },
+    "library.unknown": {
+        "title": "Library",
+        "message": "Unknown error",
+        "status": "majorError",
+        "code": 500,
+        "instructions": "This is an unknown error. Please try again later."
+    },
+    "library.invalidFile": {
+        "title": "Library",
+        "message": "Invalid file",
+        "status": "error",
+        "code": 404,
+        "instructions": "Please use a valid file"
+    },
+    "library.notJSONArray": {
+        "title": "Library",
+        "message": "Not a JSON array",
+        "status": "error",
+        "code": 404,
+        "instructions": "Please use a valid JSON array"
     }
 }

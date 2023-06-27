@@ -13,6 +13,7 @@ import { config } from 'dotenv';
 import './server-functions/declaration-merging/express.d.ts';
 import { Status } from './server-functions/structure/status';
 import Account from './server-functions/structure/accounts';
+import { navbarBuilder } from './server-functions/builders/links';
 
 config();
 
@@ -22,6 +23,8 @@ declare global {
             session: Session;
             start: number;
             io: Server;
+
+            file?: CustomFile;
         }
     }
 }
@@ -236,7 +239,7 @@ app.use((req, res, next) => {
 
 
 import admin from './server-functions/routes/admin';
-import { getTemplateSync, getJSON, log, LogType } from './server-functions/files';
+import { getTemplateSync, getJSON, log, LogType, getTemplate, CustomFile } from './server-functions/files';
 app.use('/admin', admin);
 
 
@@ -297,6 +300,58 @@ app.get('/get-links', async (req, res) => {
 
 
 
+
+app.get('/*', Account.isSignedIn, async (req, res, next) => {
+    const permissions = await req.session.account?.getPermissions();
+
+    if (permissions?.permissions.includes('logs')) {
+        req.session.socket?.join('logs');
+    }
+
+    const [pages, metadata, navbar] = await Promise.all([
+        getJSON('pages') as Promise<Page[]>,
+        getJSON('metadata') as Promise<{ [key: string]: any }>,
+        navbarBuilder(req.url, req.session)
+    ]);
+
+    const cstr = {
+        pagesRepeat: pages.map(page => {
+            return page.links.map(l => {
+                return {
+                    title: l.name,
+                    content: getTemplateSync(l.html),
+                    lowercaseTitle: l.name.toLowerCase().replace(/ /g, '-'),
+                    prefix: l.prefix 
+                }
+            })
+        }).flat(Infinity),
+        navSections: pages.map(page => {
+            return [
+                {
+                    title: page.title,
+                    type: 'navTitle'
+                },
+                ...page.links.map(l => {
+                    return {
+                        name: l.name,
+                        type: 'navLink',
+                        pathname: l.pathname,
+                        icon: l.icon,
+                        lowercaseTitle: l.name.toLowerCase().replace(/ /g, '-'),
+                        prefix: l.prefix
+                    }
+                })
+            ];
+        }).flat(Infinity),
+        year: new Date().getFullYear(),
+        description: metadata.description + '\n\n' + navbar.description,
+        keywords: [metadata.keywords, navbar.keywords].flat(Infinity),
+        navbar: navbar.html
+    };
+
+    const html = await getTemplate('index', cstr);
+    res.status(200).send(html);
+});
 
 
 

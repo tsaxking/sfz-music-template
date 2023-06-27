@@ -1,0 +1,162 @@
+[
+    {
+        "title": "Home",
+        "link": "/home",
+        "template": "/sfz-music/home",
+        "keywords": [],
+        "description": "",
+        "type": "page"
+    }, 
+    
+    
+    
+    {
+        "title": "Toolbox",
+        "link": "/toolbox",
+        "template": "/sfz-music/toolbox",
+        "description": "",
+        "keywords": [],
+        "type": "page"
+    }, 
+    
+    
+    
+    {
+        "title": "Blog",
+        "link": "/blog",
+        "template": "/sfz-music/blog/blog",
+        "description": "",
+        "keywords": [],
+        "type": "page"
+    }, 
+    
+    
+    
+    {
+        "title": "Donate",
+        "link": "/donate",
+        "template": "/sfz-music/donate",
+        "description": "",
+        "keywords": [],
+        "type": "page"
+    }, 
+    
+    
+    
+    
+    
+    {
+        "title": "About",
+        "type": "dropdown",
+        "items": [
+            {
+                "title": "About Us",
+                "link": "/about/about-us",
+                "template": "/sfz-music/about",
+                "description": "",
+                "keywords": []
+            },
+            {
+                "title": "Contact Us",
+                "link": "/about/contact",
+                "template": "/sfz-music/general/contact",
+                "description": "",
+                "keywords": []
+            },
+            {
+                "title": "Privacy Policy",
+                "link": "/about/privacy-policy",
+                "template": "/sfz-music/general/privacy-policy",
+                "description": "",
+                "keywords": []
+            },
+            {
+                "title": "Terms of Service",
+                "link": "/about/terms-of-service",
+                "template": "/sfz-music/general/terms-of-service",
+                "description": "",
+                "keywords": []
+            }
+        ]
+    }, 
+    
+    
+    
+    
+    
+    {
+        "type": "dropdown",
+        "title": "Studio",
+        "items": [
+            {
+                "title": "Film Scoring",
+                "link": "/studio/film-scoring",
+                "template": "/sfz-music/studio/film-scoring",
+                "description": "",
+                "keywords": []
+            },
+            {
+                "title": "Mixing/Mastering",
+                "link": "/studio/mixing-mastering",
+                "template": "/sfz-music/studio/mixing-mastering",
+                "description": "",
+                "keywords": []
+            },
+            {
+                "title": "Recording",
+                "link": "/studio/recording",
+                "template": "/sfz-music/studio/recording",
+                "description": "",
+                "keywords": []
+            },
+            {
+                "title": "Production",
+                "link": "/studio/production",
+                "template": "/sfz-music/studio/production",
+                "description": "",
+                "keywords": []
+            }
+        ]
+    },
+
+
+
+    {
+        "type": "dropdown",
+        "title": "Dashboards",
+        "items": [
+            {
+                "type": "section",
+                "title": "Library"
+            },
+            {
+                "title": "Library",
+                "link": "/dashboards/library",
+                "template": "/sfz-music/dashboards/library",
+                "description": "",
+                "keywords": []
+            },
+            {
+                "title": "Ensemble Management",
+                "link": "/dashboards/ensemble-management",
+                "template": "/sfz-music/dashboards/ensemble-management",
+                "description": "",
+                "keywords": []
+            },
+
+
+
+            {
+                "type": "section",
+                "title": "Classes"
+            },
+            {
+                "title": "Class Management",
+                "link": "/dashboards/class-management",
+                "template": "/sfz-music/dashboards/class-management",
+                "description": "",
+                "keywords": []
+            }
+        ]
+    }
+]

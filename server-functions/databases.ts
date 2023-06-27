@@ -178,3 +178,4 @@ export class DB {
 
 
 export const MAIN = new DB('main');
+export const LIB = new DB('lib');

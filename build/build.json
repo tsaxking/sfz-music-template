@@ -56,12 +56,22 @@
 
                 // all js files in these folders (no ts)
                 "[ts]../static/js/top",
-                "[ts]../static/js/bottom"
+                "[ts]../static/js/bottom",
+                "[ts]../static/js/business",
+                "../static/js/business/socket.d.ts"
 
                 // specific files
             ]
         },
         "lite.js": {
+            "files": [
+                "https://code.jquery.com/jquery-3.1.1.min.js",
+                "https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js",
+                "https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.min.js",
+                "https://cdnjs.cloudflare.com/ajax/libs/bootstrap-colorpicker/3.2.0/js/bootstrap-colorpicker.min.js"
+            ]
+        },
+        "sfz-music.js": {
             "files": [
                 "https://code.jquery.com/jquery-3.1.1.min.js",
                 "https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js",
