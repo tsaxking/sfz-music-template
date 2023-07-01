@@ -4,7 +4,7 @@
  * @param {String} str 
  * @returns {String}
  */
-export const clenseSQL = (str: string): string => {
+export const cleanseSQL = (str: string): string => {
     return str
     // remove comments
         .replace(/--.*/gi, '')

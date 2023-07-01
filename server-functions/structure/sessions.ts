@@ -10,6 +10,13 @@ import { Socket } from 'socket.io';
 type CustomRequest = Request & { session: Session };
 
 
+type SocketEmit = {
+    event: string;
+    args: any;
+    room?: string;
+}
+
+
 export class Session {
     static middleware(req: CustomRequest, res: Response, next: NextFunction) {
         if (!req.session) {
@@ -91,7 +98,23 @@ export class Session {
         if (!id) return false;
         const session = Session.sessions[id];
         if (!session) return false;
-        session.setSocket(socket);
+        session.sockets.push({
+            socket,
+            queue: []
+        } as {
+            socket: Socket,
+            queue: SocketEmit[]
+        });
+
+        socket.on('reconnect', () => {
+            const s = session.sockets.find(s => s.socket.id === socket.id);
+            if (!s) return;
+            s.queue.forEach(q => {
+                if (q.room) return socket.to(q.room).emit(q.event, ...q.args);
+                socket.emit(q.event, ...q.args);
+            });
+        });
+
         return true;
     }
 
@@ -101,7 +124,33 @@ export class Session {
     id: string;
     latestActivity: number = Date.now();
     account: Account|null = null;
-    socket?: Socket;
+    private readonly sockets: {
+        socket: Socket,
+        queue: SocketEmit[]
+    }[] = [];
+    readonly socket = {
+        emit: (event: string, ...args: any[]) => {
+            this.sockets.forEach(s => {
+                if (!s.socket.connected) return s.queue.push({ event, args });
+                
+                s.socket.emit(event, ...args);
+            });
+        },
+        to: (room: string) => {
+            return {
+                emit: (event: string, ...args: any[]) => {
+                    for (const s of this.sockets) {
+                        if (!s.socket.rooms.has(room)) continue;
+                        if (!s.socket.connected) {
+                            s.queue.push({ event, args, room });
+                            continue;
+                        }
+                        s.socket.to(room).emit(event, ...args);
+                    }
+                }
+            }
+        }
+    }
 
     constructor(req?: CustomRequest, res?: Response) {
         if (req) this.ip = getClientIp(req);
@@ -112,10 +161,6 @@ export class Session {
             httpOnly: true,
             maxAge: 1000 * 60 * 60 * 24 * 365 * 10 // 10 years
         });
-    }
-
-    setSocket(socket: Socket) {
-        this.socket = socket;
     }
 
     signIn(account: Account) {

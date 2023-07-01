@@ -1,9 +1,9 @@
 import { Test } from '../debug';
 
-export default {
-    name: 'This should succeed',
-    expect: true,
-    test: async() => {
+export default new Test(
+    'test', 
+    true, 
+    () => {
         return true;
     }
-} as Test;
+);

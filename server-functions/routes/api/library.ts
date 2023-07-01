@@ -25,11 +25,7 @@ lib.post('/new', async (req, res) => {
     const lib = await Library.new(name);
     Status.from('library.new', req).send(res);
 
-    const { socket } = req.session;
-
-    if (socket) {
-        socket.emit('lib:data', await lib.getData());
-    }
+    req.session.socket.emit('library.new', lib);
 });
 
 lib.post('/from-file', fileStream({

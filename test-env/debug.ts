@@ -35,10 +35,12 @@ enum failReason {
     success = 'Success'
 }
 
-export type Test = {
-    name: string;
-    expect: any;
-    test: (db: DB) => Promise<any>;
+export class Test {
+    constructor(
+        public readonly name: string, 
+        public readonly expect: any, 
+        public readonly test: ((db?: DB) => Promise<any>) | (() => any)
+    ) {}
 }
 
 

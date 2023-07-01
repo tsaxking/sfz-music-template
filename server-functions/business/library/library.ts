@@ -1,6 +1,6 @@
 import { MAIN, LIB } from '../../databases';
 import { getUpload } from '../../files';
-import { clenseSQL } from '../../structure/sql';
+import { cleanseSQL } from '../../structure/sql';
 import { uuid } from '../../structure/uuid';
 import * as fs from 'fs';
 import * as fsPromises from 'fs/promises';
@@ -322,7 +322,7 @@ export class Library {
 
         const query = `
             ALTER TABLE "${this.id}"
-            ADD COLUMN "${clenseSQL(header)}" ${sql}
+            ADD COLUMN "${cleanseSQL(header)}" ${sql}
         `;
 
         await LIB.run(query);
@@ -345,8 +345,8 @@ export class Library {
         }
         const query = `
             ALTER TABLE "${this.id}"
-            RENAME COLUMN "${clenseSQL(header)}"
-            TO "${clenseSQL(newHeader)}"
+            RENAME COLUMN "${cleanseSQL(header)}"
+            TO "${cleanseSQL(newHeader)}"
         `;
 
         await LIB.run(query);
@@ -396,7 +396,7 @@ export class Library {
         
                 const query = `
                     INSERT INTO "${this.id}"
-                    (${keys.map(clenseSQL).join(', ')})
+                    (${keys.map(cleanseSQL).join(', ')})
                     VALUES
                     (${keys.map(() => '?').join(', ')})
                 `;
