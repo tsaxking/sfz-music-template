@@ -2,23 +2,23 @@
     <div class="container-fluid">
         <div class="d-flex justify-content-space-between w-100">
             <!-- offcanvas trigger -->
-            <button class="navbar-toggler" type="button" data-bs-toggle="offcanvas" data-bs-target="#side-bar-nav" aria-controls="side-bar-nav">
-                <span class="material-icons">menu</span>
-            <!-- offcanvas trigger -->
-            </button>
+            <script cstr id="offcanvas">
+                if (offcanvas) {
+                    // offcanvas trigger
+                    return `
+                        <button class="navbar-toggler" type="button" data-bs-toggle="offcanvas" data-bs-target="#side-bar-nav" aria-controls="side-bar-nav">
+                            <span class="material-icons">menu</span>
+                        </button>
+                    `;
+                }
+            </script>
+            
             <!-- Brand -->
             <span class="text-light me-auto">
                 <a class="navbar-brand fw-bold">&nbsp;sfzMusic</a>&nbsp; 
-                <span class="d-none">Hello, {{ accountName }}</span>
+                <!-- <span class="d-none">Hello, {{ accountName }}</span> -->
             </span>
 
-
-            <button type="button" class="d-none btn btn-primary position-relative me-2" data-bs-toggle="modal" data-bs-target="#alert-modal" id="alerts-button">
-                <i class="material-icons">notifications</i>
-                    <span class="position-absolute top-0 badge rounded-pill bg-danger animate__animated animate__flash animate__infinite"><span id="num-alerts"></span> 
-                    <!-- <span class="visually-hidden">unread messages</span> -->
-                </span>
-            </button>
 
             <!-- Toggle navigation -->
             <a class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-links" aria-controls="navbar-links" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,16 +29,15 @@
 
         <!-- Navigation -->
         <div class="collapse navbar-collapse" id="navbar-links">
-            {{ mainLinks }}
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <repeat id="navbarRepat">
+                    <li class="nav-item">
+                        <a class="nav-link {{ active }}" href="/{{ link }}">{{ name }}</a>
+                    </li>
+                </repeat>
+            </ul>
 
-            <!-- Search for something -->
-            <div class="d-flex ms-auto my-lg-0">
-                <div class="input-group mx-1" id="search-container">
-                    
-                </div>
-            </div>
-
-            {{ accountDropdown }}
+            <!-- {{ accountDropdown }} -->
         </div>
     </div>
 </nav>

@@ -15,10 +15,12 @@ enum QueryType {
     run = 'run'
 }
 
+type Param = (string|number|boolean|null|undefined);
+
 class Query {
     type: QueryType;
     query: string;
-    params: any[];
+    params: Param[];
     resolve: Resolve<any>;
     reject: Reject;
 
@@ -112,31 +114,31 @@ export class DB {
         return data;
     }
 
-    async run(query: string, params?: any[]):Promise<sqlite3.RunResult> {
+    async run(query: string, params?: Param[]):Promise<sqlite3.RunResult> {
         return new Promise((resolve, reject) => {
             this.runQueue(new Query(QueryType.run, query, resolve, reject, params));
         });
     }
 
-    async exec(query: string, params?: any[]):Promise<sqlite3.RunResult> {
+    async exec(query: string, params?: Param[]):Promise<sqlite3.RunResult> {
         return new Promise((resolve, reject) => {
             this.runQueue(new Query(QueryType.exec, query, resolve, reject, params));
         });
     }
 
-    async get(query: string, params?: any[]):Promise<any> {
+    async get(query: string, params?: Param[]):Promise<any> {
         return new Promise((resolve, reject) => {
             this.runQueue(new Query(QueryType.get, query, resolve, reject, params));
         });
     }
 
-    async all(query: string, params?: any[]):Promise<any[]> {
+    async all(query: string, params?: Param[]):Promise<any[]> {
         return new Promise((resolve, reject) => {
             this.runQueue(new Query(QueryType.all, query, resolve, reject, params));
         });
     }
 
-    async each(query: string, params?: any[]):Promise<any> {
+    async each(query: string, params?: Param[]):Promise<any> {
         return new Promise((resolve, reject) => {
             this.runQueue(new Query(QueryType.each, query, resolve, reject, params));
         });
@@ -178,4 +180,3 @@ export class DB {
 
 
 export const MAIN = new DB('main');
-export const LIB = new DB('lib');

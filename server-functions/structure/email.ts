@@ -16,7 +16,7 @@ const transporter = nodemailer.createTransport(sgTransport({
 
 
 
-type EmailOptions = {
+export type EmailOptions = {
     attachments?: {
         filename: string,
         path: string
@@ -84,7 +84,7 @@ export class Email {
 
 
         const mailOptions = {
-            from: process.env.EMAIL,
+            from: process.env.SENDGRID_DEFAULT_FROM,
             to,
             subject,
             html,

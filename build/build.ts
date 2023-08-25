@@ -9,7 +9,7 @@ import ChildProcess, { spawn } from 'child_process';
 import sass from 'sass';
 // import { compile } from '@gerhobbelt/gitignore-parser';
 import { Worker, isMainThread, workerData, parentPort } from 'worker_threads';
-import ts from 'typescript';
+import ts, { CompilerOptions } from 'typescript';
 import * as chokidar from 'chokidar';
 
 const fsPromises = fs.promises;
@@ -41,6 +41,13 @@ enum Colors {
 }
 
 
+const log = (...args: any[]) => {
+    console.log(Colors.FgBlue, '[Build.ts]', Colors.Reset, ...args);
+};
+
+const error = (...args: any[]) => {
+    console.error(Colors.FgRed, '[Build.ts]', Colors.Reset, ...args);
+};
 
 
 
@@ -200,70 +207,15 @@ const fromUrl = async (url: string): Promise<{ data: any, safeUrl: string }> => 
     });
 }
 
-// const fromTsFile = async (filePath: string, stream: fs.WriteStream, ext: string, streamName: string): Promise<any> => {
-//     return new Promise(async (res, rej) => {
-//         try {
-//             const tsConfig = readJSON(path.resolve(__dirname, filePath, './tsconfig.json'));
-
-//             const program = ts.createProgram([filePath], {
-//                 ...tsConfig.compilerOptions,
-//                 noEmitOnError: true
-//             });
-//             const emitResult = program.emit();
-        
-//             const allDiagnostics = ts.getPreEmitDiagnostics(program).concat(emitResult.diagnostics);
-        
-//             allDiagnostics.forEach(diagnostic => {
-//                 if (diagnostic.file) {
-//                     const { line, character } = diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start!);
-//                     const message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n');
-//                     // console.log(`${diagnostic.file.fileName} (${line + 1},${character + 1}): ${message}`);
-//                 } else {
-//                     // console.log(ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'));
-//                 }
-//             });
-        
-//             const exitCode = emitResult.emitSkipped ? 1 : 0;
-        
-//             if (exitCode !== 0) {
-//                 console.error(new Error('There was an error compiling the project'));
-//             }
-
-
-//             if (tsConfig?.compilerOptions?.outFile) {
-//                 return res(fromFile(tsConfig.compilerOptions.outFile, stream, ext, streamName));
-//             }
-
-//             if (tsConfig?.compilerOptions?.outDir) {
-//                 return res(fromDirSync(tsConfig.compilerOptions.outDir, '.js', stream, [], streamName));
-//             }
-
-//             const readDir = (dirPath: string) => {
-//                 const files = fs.readdirSync(dirPath);
-//                 for (const file of files) {
-//                     if (fs.lstatSync(path.resolve(dirPath, file)).isDirectory()) {
-//                         readDir(path.resolve(dirPath, file));
-//                         continue;
-//                     }
-
-//                     if (file.endsWith('.ts')) watchIgnoreList.push(path.resolve(dirPath, file.replace('.ts', '.js')));
-//                 }
-//             };
-
-//             if (fs.lstatSync(filePath).isDirectory()) {
-//                 readDir(filePath);
-//             }
-//         } catch { res(null); }
-//     });
-// }
-
-const fromTsDir = async (dirPath: string, ext: string): Promise<{
+const fromTsDir = async (dirPath: string, ext: string, stream: boolean = true): Promise<{
     content: string,
     files: string[]
 }> => {
+    // log('Running tsc: ', dirPath);
+
+
     return new Promise(async (res, rej) => {
         try {
-            // console.log('Runnint tsc: ', dirPath);
             const child = spawn('tsc', [], {
                 stdio: 'pipe',
                 shell: true,
@@ -271,20 +223,29 @@ const fromTsDir = async (dirPath: string, ext: string): Promise<{
                 env: process.env
             });
 
-            child.on('error', console.error);
-            child.stdout.on('data', (data) => {
-                // console.log(data.toString());
-            });
+            // child.on('error', error);
+            // child.stdout.on('data', (data) => {
+            //     log(data.toString());
+            // });
 
-            child.stderr.on('data', (data) => {
-                console.error(data.toString());
-            });
+            // child.stderr.on('data', (data) => {
+            //     error(data.toString());
+            // });
 
             child.on('close', () => {   
                 const tsConfig = readJSON(path.resolve(__dirname, dirPath, './tsconfig.json'));
 
+                if (!stream) return res({
+                    content: '',
+                    files: 
+                        tsConfig?.compilerOptions?.outFile ? 
+                            [tsConfig.compilerOptions.outFile] :
+                            []
+                });
                 if (tsConfig?.compilerOptions?.outFile) {
-                    return res(fromFile(tsConfig.compilerOptions.outFile, ext));
+                    return res(fromFile(
+                        path.resolve(__dirname, path.relative(__dirname, dirPath), tsConfig.compilerOptions.outFile)
+                        , ext));
                 }
                 res({
                     content: '',
@@ -322,15 +283,15 @@ const fromFile = (filePath: string, ext: string): Promise<{
     return new Promise(async (res, rej) => {
         // let content = '';
         try {
-            // console.log('Adding file to stream', filePath);
-            // // console.log(path.extname(filePath), ext);
+            // log('Adding file to stream', filePath);
+            // // log(path.extname(filePath), ext);
             if (path.extname(filePath) !== ext) {
                 return res({
                     content: '',
                     files: [filePath]
                 });
             }
-            // // console.log(filePath);
+            // // log(filePath);
             const data = await fsPromises.readFile(
                 filePath,
                 'utf8'
@@ -344,7 +305,7 @@ const fromFile = (filePath: string, ext: string): Promise<{
             });
 
         } catch (err) {
-            console.error('Error adding file:', filePath);
+            error('Error adding file:', filePath);
             res({
                 content: '',
                 files: [filePath]
@@ -368,6 +329,7 @@ const fromDir = async (dirPath: string, ext: '.js' | '.css', ignoreList: string[
         };
 
         const readDir = async (dirPath: string) => {
+            // log(dirPath);
             if (dirPath.includes('.git')) return;
             if (dirPath.includes('[ts]')) {
                 const {
@@ -381,7 +343,7 @@ const fromDir = async (dirPath: string, ext: '.js' | '.css', ignoreList: string[
 
             const files = await fsPromises.readdir(dirPath);
             for (const file of files) {
-                // console.log('Reading file:', file);
+                // log('Reading file:', file);
                 if (fs.lstatSync(path.resolve(dirPath, file)).isDirectory()) {
                     await readDir(path.resolve(dirPath, file));
                     continue;
@@ -427,7 +389,7 @@ const fromDir = async (dirPath: string, ext: '.js' | '.css', ignoreList: string[
             files: renderedFiles
         };
     } catch (e) { 
-        console.error(e);
+        error(e);
         return {
             content: '',
             files: []
@@ -445,7 +407,7 @@ const copyFile = async (filePath: string, streamName: string, index: number): Pr
     return new Promise(async (res, rej) => {
         try {
             if (filePath.includes('http')) {
-                // console.log('file is url:', filePath);
+                // log('file is url:', filePath);
                 const { data, safeUrl } = await fromUrl(filePath);
                 fsPromises.writeFile(
                     path.resolve(__dirname, '..', 'static', 'build', 'dir-' + streamName.replace('.', '-'),
@@ -457,19 +419,28 @@ const copyFile = async (filePath: string, streamName: string, index: number): Pr
                 return res();
             }
 
-            // console.log('file is not url:', filePath);
+            // log('file is not url:', filePath);
 
-            filePath = filePath.replace('[ts]', '');
+            const hasTS = filePath.includes('[ts]');
+
+            // filePath = filePath.replace('[ts]', '');
 
             // copy all files or folders from path
             await fsPromises.cp(
-                path.resolve(__dirname, filePath),
+                path.resolve(__dirname, filePath).replace('[ts]', ''),
                 path.resolve(__dirname, '..', 'static', 'build', 'dir-' + streamName.replace('.', '-'),
                     index + filePath
                         .replace(new RegExp('/', 'g'), '')
                 ),
                 { recursive: true }
             );
+
+            if (hasTS) {
+                await fsPromises.writeFile(
+                    path.resolve(__dirname, '..', 'static', 'build', 'dir-' + streamName.replace('.', '-'), index + filePath.replace(new RegExp('/', 'g'), ''), 'tsconfig.json'),
+                    frontTs
+                );
+            }
 
             res();
         } catch { 
@@ -493,10 +464,14 @@ export const buildServerFunctions = async (): Promise<void> => {
                 env: process.env
             });
 
-            // child.on('error', console.error);
-            // child.stdout.on('data', console.log);
-            // child.stderr.on('data', console.error);
-            child.on('close', () => {
+            child.on('error', error);
+            child.stdout.on('data', log);
+            child.stderr.on('data', error);
+            child.on('exit', (code) => {
+                if (code !== 0) {
+                    error('Error building server functions');
+                }
+
                 res();
             });
         } catch { res(); }
@@ -505,12 +480,12 @@ export const buildServerFunctions = async (): Promise<void> => {
 
 const buildInit = async(streamName: string, buildStream: BuildStream): Promise<void> => {
     const min = streamName
-    .replace(
-        path.extname(streamName),
-        '.min' + path.extname(streamName)
-    );
+        .replace(
+            path.extname(streamName),
+            '.min' + path.extname(streamName)
+        );
 
-    // console.log('Building stream:', streamName);
+    // log('Building stream:', streamName);
 
     const {
         files
@@ -519,7 +494,7 @@ const buildInit = async(streamName: string, buildStream: BuildStream): Promise<v
     const streamDirPath = path.resolve(__dirname, `../static/build/dir-${streamName.replace('.', '-')}`);
 
     const makeStreamDir = async () => {
-        // console.log('Making stream dir:', streamDirPath);
+        // log('Making stream dir:', streamDirPath);
         return await fsPromises.mkdir(streamDirPath);
     };
 
@@ -536,7 +511,7 @@ const buildInit = async(streamName: string, buildStream: BuildStream): Promise<v
     await Promise.all(
         Object.entries(files)
             .map(async ([index, file]) => {
-                // console.log('Copying file:', file);
+                // log('Copying file:', file);
                 if (file.includes('--ignore-build')) return;
                 if (file.includes('http')) {
                     if (!file.includes('--force')) {
@@ -551,73 +526,50 @@ const buildInit = async(streamName: string, buildStream: BuildStream): Promise<v
 };
 
 
-const postBuild = async(streamName: string, buildStream: BuildStream, ignore: string[], minify: boolean): Promise<void> => {
-    const streamDirPath = path.resolve(__dirname, `../static/build/dir-${streamName.replace('.', '-')}`);
-    const streamPath = path.resolve(__dirname, '../static/build', streamName);
-    let { content, files } = await fromDir(
-        streamDirPath,
-        path.extname(streamName) as '.js' | '.css',
-        [...(ignore || []), ...(buildStream.ignore || [])]
-    );
+const startDevWorkers = (streamName: string): Promise<void> => {
+    return new Promise((res, rej) => {
+        const dir = path.resolve(__dirname, `../static/build/dir-${streamName.replace('.', '-')}`);
 
-    files = files.map(f => {
-        return path.relative(__dirname, f);
-    });
+        const worker = new Worker(path.resolve(__dirname, './run-ts.js'), {
+            workerData: {
+                dir,
+                options: frontTs
+            }
+        });
 
-    if (!isMainThread) {
-        parentPort?.postMessage('Files: ' + JSON.stringify(files));
-    }
 
-    if (!content) content = '';
-
-    await fsPromises.writeFile(streamPath, content);
-
-    if (minify) {
-        // console.log('Minifying stream:', streamName);
-        const ext = path.extname(streamPath);
-        const minStreamName = streamName.replace(ext, '.min' + ext);
-
-        switch (ext) {
-            case '.js':
-                content = UglifyJS.minify(content, {
-                    compress: {
-                        drop_console: true
-                    }
-                }).code;
-                break;
-            case '.css':
-                content = await postcss([autoprefixer, cssnano]).process(content, { from: undefined })
-                    .then(result => {
-                        return result.css;
-                    }).catch(err => {
-                        // console.log("ERROR MINIFYING CSS", err);
-                    }) || '';
-                break;
+        worker.on('message', (msg) => {
+            if (msg === 'done') {
+                res();
+            }
         }
+        );
 
-        if (!content) content = '';
-
-        await Promise.all([
-            fsPromises.writeFile(
-                path.resolve(__dirname, '../static/build', minStreamName),
-                content
-            )
-        ]);
-    }
+        worker.on('error', error);
+        worker.on('exit', (code) => {
+            if (code !== 0) {
+                error('Error building server functions');
+            }
+        });
+    });
 };
+
+
+
+
 
 enum BuildType {
     INIT = 'init',
     POST = 'post'
 }
 
-const _runBuild = async(streamName: string, buildStream: BuildStream, buildType: BuildType, ignore: string[] = [], minify: boolean = true): Promise<void> => {
+const _runBuild = async(streamName: string, buildStream: BuildStream, buildType: BuildType, ignore: string[] = [], minify: boolean = true, env: string): Promise<void> => {
     try {
-        // console.log('Running build: ', streamName);
+        // log('Running build: ', streamName);
         if (buildType === BuildType.INIT) await buildInit(streamName, buildStream);
-        await postBuild(streamName, buildStream, ignore, minify);
+        await build(streamName, buildStream, ignore, minify, env);
     } catch (error) {
-        console.error(error);
+        error(error);
     }
 };
 
@@ -635,27 +587,29 @@ export const renderedBuilds: {
 } = {};
 
 let workers: Worker[] = [];
-export const doBuild = async(): Promise<void> => {
+export const doBuild = async(env: string): Promise<void> => {
     let build: Build;
     try {
         build = readJSON(path.resolve(__dirname, './build.json')) as Build;
     } catch (e) { 
-        console.error('Error reading build.json: ', e);
+        error('Error reading build.json: ', e);
         return;
     }
     const { streams, ignore, minify } = build;
     return new Promise(async(res, rej) => {
         try {
             if (isMainThread) {
+
                 workers = Object.keys(build.streams)
                     .map((streamName): Worker => {
                         const worker = new Worker(
                             path.resolve(__dirname, './build.js'), {
                             workerData: {
                                 streamName,
-                                stream: build.streams[streamName],
+                                stream: streams[streamName],
                                 buildType: BuildType.INIT,
-                                renderedBuild: {}
+                                renderedBuild: {},
+                                env
                             }
                         });
 
@@ -684,12 +638,12 @@ export const doBuild = async(): Promise<void> => {
                                 const url = msg.split(' ')[1];
                                 workerDownloads[url] = true;
                             } else if (msg.includes('Files:')) {
-                                const files: string = msg.split(' ')[1] as string;
+                                const files: string = msg.split(' ').slice(1).join(' ');
                                 renderedBuilds[streamName].push(...JSON.parse(files) as string[]);
                             }
                         });
 
-                        worker.on('error', console.error);
+                        worker.on('error', error);
 
                         return worker;
                     });
@@ -704,12 +658,12 @@ export const doBuild = async(): Promise<void> => {
 
                 res();
             } else {
-                const { streamName, stream, buildType } = workerData;
-                // console.log('New worker', workerData);
+                const { streamName, stream, buildType, env } = workerData;
+                // log('New worker', workerData);
                 try {
-                    await _runBuild(streamName, stream, buildType, ignore, minify);
+                    await _runBuild(streamName, stream, buildType, ignore, minify, env);
                 } catch {
-                    // console.log('Error running build');
+                    // log('Error running build');
                     parentPort?.postMessage('error');
                 }
                 parentPort?.postMessage('done');
@@ -719,65 +673,256 @@ export const doBuild = async(): Promise<void> => {
 };
 
 
-export const onFileChange = async (filename: string) => {
-    const build = readJSON(path.resolve(__dirname, './build.json')) as Build;
-    const { streams, ignore, minify } = build;
 
-    const isFileInStream = async (files: string[]): Promise<boolean> => {
-        return new Promise((res, rej) => {
-            // check if file is in files
-            // check if file is any directory in files
-            
 
-            // dir or file
-            const filePath = path.resolve(__dirname, '..', filename);
+const build = async(streamName: string, buildStream: BuildStream, ignore: string[], minify: boolean, env: string): Promise<void> => {
+    const streamDirPath = path.resolve(__dirname, `../static/build/dir-${streamName.replace('.', '-')}`);
+    const streamPath = path.resolve(__dirname, '../static/build', streamName);
+    let { content, files } = await fromDir(
+        streamDirPath,
+        path.extname(streamName) as '.js' | '.css',
+        [...(ignore || []), ...(buildStream.ignore || [])]
+    );
 
-            // exact file match
-            if (files.includes(filePath)) return res(true);
+    // files = files.map(f => {
+    //     return path.relative(__dirname, f);
+    // });
 
-            res(
-                files.some(async (file) => {
-                    const matchFilePath = path.resolve(__dirname, file);
+    // if (!isMainThread) {
+    //     parentPort?.postMessage('Files: ' + JSON.stringify(files));
+    // }
 
-                    // this should work with either a file or a directory
-                    return filePath.includes(matchFilePath);
-                })
-            );
+    if (!content) content = '';
+
+    await fsPromises.writeFile(streamPath, content);
+
+    if (env === 'dev') {
+        // await startDevWorkers(streamName);
+    }
+
+    if (minify) {
+        // log('Minifying stream:', streamName);
+        const ext = path.extname(streamPath);
+        const minStreamName = streamName.replace(ext, '.min' + ext);
+
+        switch (ext) {
+            case '.js':
+                content = UglifyJS.minify(content, {
+                    compress: {
+                        // drop_console: true
+                    }
+                }).code;
+                break;
+            case '.css':
+                content = await postcss([autoprefixer, cssnano]).process(content, { from: undefined })
+                    .then(result => {
+                        return result.css;
+                    }).catch(err => {
+                        // log("ERROR MINIFYING CSS", err);
+                    }) || '';
+                break;
+        }
+
+        if (!content) content = '';
+
+        await Promise.all([
+            fsPromises.writeFile(
+                path.resolve(__dirname, '../static/build', minStreamName),
+                content
+            )
+        ]);
+    }
+};
+
+
+
+export const onFileChange = async (filename: string, env: string) => {
+    if (filename.includes('server-functions') || filename === path.resolve(__dirname, '../server.ts')) {
+        log('Server functions changed, file');
+
+        const program = ts.createProgram([filename], {
+            target: ts.ScriptTarget.ES2022,
+            module: ts.ModuleKind.CommonJS,
+            allowJs: true,
+            checkJs: false,
+            forceConsistentCasingInFileNames: true,
+            esModuleInterop: true,
+            skipLibCheck: true
         });
+
+        const emitResult = program.emit();
+
+        // const allDiagnostics = ts.getPreEmitDiagnostics(program).concat(emitResult.diagnostics);
+
+        // allDiagnostics.forEach(diagnostic => {
+        //     if (diagnostic.file) {
+        //         const { line, character } = diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start!);
+        //         const message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n');
+        //         log(`${diagnostic.file.fileName} (${line + 1},${character + 1}): ${message}`);
+        //     } else {
+        //         log(ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'));
+        //     }
+        // });
+    
+        // const exitCode = emitResult.emitSkipped ? 1 : 0;
+    
+        // if (exitCode !== 0) {
+        //     error(new Error('There was an error compiling the project'));
+        // }
+
+        log('Built single file');
+    
+        return;
+    }
+
+    const _build = readJSON(path.resolve(__dirname, './build.json')) as Build;
+    const { streams, minify } = _build;
+
+    
+    // gets the filename relative to the stream
+    const filePath = path.relative(__dirname, filename)
+        .replace('.ts', '.js')
+        .replace('.sass', '.css')
+        .replace('.scss', '.css');
+
+    const dirPath = path.dirname(filePath);
+    const basename = path.basename(filePath);
+    const replaceFilename = dirPath.replace(new RegExp('/', 'g'), '') + '/' + basename;
+
+    console.log(replaceFilename);
+
+    const isFileInStream = (files: string[]): string | undefined => {
+        const inStream = files.find((file) => {
+                const fileDir = path.resolve(__dirname, file.replace('[ts]', '').replace('--ignore-build', ''));
+                return filename.includes(fileDir);
+            });
+
+        return inStream;
     }
 
     await Promise.all(
         Object.entries(streams)
         .map(async ([streamName, buildStream]) => {
-            if (await isFileInStream(buildStream.files)) {
-                // copy file over
-                await fsPromises.copyFile(
-                    path.resolve(__dirname, '..', filename),
-                    path.resolve(__dirname, '../static/build/dir-' + streamName.replace('.', '-'), filename)
-                );
-                
-                const w = new Worker(__filename, {
-                    workerData: {
-                        streamName,
-                        stream: buildStream,
+            return new Promise(async (res, rej) => {
+                const filePath = isFileInStream(buildStream.files);
 
-                        // will not init build directory
-                        buildType: BuildType.POST
+                if (filePath) {
+                    log('File in stream', filename, streamName);
+
+                    const files = await fsPromises.readdir(
+                        path.resolve(__dirname, '../static/build/dir-' + streamName.replace('.', '-'))
+                    );
+    
+                    const folder = files.find((file) => {
+                        return file.includes(filePath
+                            .replace(new RegExp('/', 'g'), '')
+                            .replace(/\\/g, ''));
+                    });
+    
+                    if (!folder) return res(null);
+    
+                    let fileContent: string = ''; // content to inject into stream file
+                    let replaceContent: string = ''; // content to find in stream file
+                    let streamContent: string = await fsPromises.readFile(
+                        path.resolve(__dirname, '../static/build', streamName),
+                        'utf8'
+                    );
+
+                    switch (path.extname(filename)) {
+                        case '.js':
+                        case '.css':
+                            // find each file
+                            replaceContent = await fsPromises.readFile(
+                                path.resolve(__dirname, '../static/build/dir-' + streamName.replace('.', '-'), folder, basename),
+                                'utf8'
+                            );
+                            fileContent = await fsPromises.readFile(
+                                filename,
+                                'utf8'
+                            );
+                            break;
+                        case '.sass':
+                        case '.scss':
+                            replaceContent = await fsPromises.readFile(
+                                path.resolve(__dirname, '../static/build/dir-' + streamName.replace('.', '-'), folder, basename.replace(path.extname(basename), '.css')),
+                                'utf8'
+                            );
+                            fileContent = await fromSass(filename);
+                            break;
+                        case '.ts':
+                            replaceContent = await fsPromises.readFile(
+                                path.resolve(__dirname, '../static/build/dir-' + streamName.replace('.', '-'), folder, 'index.js'),
+                                'utf8'
+                            );
+
+                            await (async () => {
+                                return new Promise(async (resolve) => {
+                                    await fsPromises.copyFile(
+                                        filename,
+                                        path.resolve(__dirname, '../static/build/dir-' + streamName.replace('.', '-'), folder, basename.replace(path.extname(basename), '.ts'))
+                                    );                                
+                                    const child = spawn('tsc', [], {
+                                        stdio: 'pipe',
+                                        shell: true,
+                                        cwd: path.resolve(__dirname, '../static/build/dir-' + streamName.replace('.', '-'), folder),
+                                        env: process.env
+                                    });
+
+                                    child.on('close', resolve);
+                                });
+                            })();
+                            fileContent = await fsPromises.readFile(
+                                path.resolve(__dirname, '../static/build/dir-' + streamName.replace('.', '-'), folder, 'index.js'),
+                                'utf8'
+                            );
+                            break;
                     }
-                });
 
-                w.on('message', (msg) => {
-                    switch (msg) {
-                        case 'done':
-                            w.terminate();
-                            break;
-                        case 'error':
-                            w.terminate();
-                            break;
-                    };
-                });
-            }
-        }));
+                    streamContent = streamContent.replace(replaceContent, fileContent);
+
+                    await fsPromises.writeFile(
+                        path.resolve(__dirname, '../static/build', streamName),
+                        streamContent
+                    );
+
+                    if (minify) {
+                        const ext = path.extname(streamName);
+                        let content = streamContent;
+                        switch (ext) {
+                            case '.js':
+                                content = UglifyJS.minify(content, {
+                                    compress: {
+                                        // drop_console: true
+                                    }
+                                }).code;
+                                break;
+                            case '.css':
+                                content = await postcss([autoprefixer, cssnano]).process(content, { from: undefined })
+                                    .then(result => {
+                                        return result.css;
+                                    }).catch(err => {
+                                        // log("ERROR MINIFYING CSS", err);
+                                    }) || '';
+                                break;
+                        }
+
+                        if (!content) content = '';
+                
+                        await Promise.all([
+                            fsPromises.writeFile(
+                                path.resolve(__dirname, '../static/build', streamName.replace(ext, '.min' + ext)),
+                                content
+                            )
+                        ]);
+                    }
+
+
+                    res(null);
+                }
+
+                res(null);
+            });
+    }));
 };
 
-if (!isMainThread) doBuild();
+if (!isMainThread) doBuild(workerData?.env);

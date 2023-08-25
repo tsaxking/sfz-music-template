@@ -7,14 +7,8 @@
         "message": "Your account has been created",
         "status": "success",
         "code": 200,
-        "instructions": "You will be notified when your account has been verified."
-    },
-    "account.verificationSuccessful": {
-        "title": "Accounts",
-        "message": "Verification successful",
-        "status": "success",
-        "code": 200,
-        "instructions": ""
+        "instructions": "You will be redirected to the login page in 1 second.",
+        "redirect": "/account/sign-in"
     },
     "account.usernameTaken": {
         "title": "Accounts",
@@ -80,13 +74,6 @@
         "code": 404,
         "instructions": ""
     },
-    "account.cannotRejectVerified": {
-        "title": "Accounts",
-        "message": "Cannot reject a verified account",
-        "status": "error",
-        "code": 404,
-        "instructions": ""
-    },
     "account.invalidUsernameOrPassword": {
         "title": "Accounts",
         "message": "Invalid username or password",
@@ -94,20 +81,13 @@
         "code": 404,
         "instructions": ""
     },
-    "account.notVerified": {
-        "title": "Accounts",
-        "message": "Account not verified",
-        "status": "error",
-        "code": 401,
-        "instructions": "Please wait until your account is verified."
-    },
     "account.loggedIn": {
         "title": "Accounts",
         "message": "You have been logged in",
         "status": "success",
         "code": 200,
         "instructions": "",
-        "redirect": "/dashboard"
+        "redirect": "/home"
     },
     "account.cannotEditSelf": {
         "title": "Accounts",
@@ -130,6 +110,116 @@
         "code": 404,
         "instructions": ""
     },
+    "account.invalidPasswordRequestKey": {
+        "title": "Accounts",
+        "message": "Your password request was invalid",
+        "status": "error",
+        "code": 404,
+        "instructions": ""
+    },
+    "account.removed": {
+        "title": "Accounts",
+        "message": "Account removed",
+        "status": "success",
+        "code": 200,
+        "instructions": ""
+    },
+    "account.invalidVerificationKey": {
+        "title": "Accounts",
+        "message": "Invalid verification key",
+        "status": "error",
+        "code": 404,
+        "instructions": ""
+    },
+    "account.verified": {
+        "title": "Accounts",
+        "message": "Account verified",
+        "status": "success",
+        "code": 200,
+        "instructions": "You can now log in!"
+    },
+
+
+        
+    // █▀▄ ▄▀▄ █   ██▀ ▄▀▀ 
+    // █▀▄ ▀▄▀ █▄▄ █▄▄ ▄█▀ 
+    "roles.roleAdded": {
+        "title": "Roles",
+        "message": "Role added",
+        "status": "success",
+        "code": 200,
+        "instructions": ""
+    },
+    "roles.roleRemoved": {
+        "title": "Roles",
+        "message": "Role removed",
+        "status": "success",
+        "code": 200,
+        "instructions": ""
+    },
+    "roles.noRole": {
+        "title": "Roles",
+        "message": "No role",
+        "status": "error",
+        "code": 404,
+        "instructions": ""
+    },
+    "roles.hasRole": {
+        "title": "Roles",
+        "message": "Has role",
+        "status": "error",
+        "code": 404,
+        "instructions": ""
+    },
+    "roles.invalidRole": {
+        "title": "Roles",
+        "message": "Invalid role",
+        "status": "error",
+        "code": 404,
+        "instructions": ""
+    },
+
+
+
+        
+    // ▄▀▀ █▄▀ █ █   █   ▄▀▀ 
+    // ▄█▀ █ █ █ █▄▄ █▄▄ ▄█▀ 
+    "skills.skillAdded": {
+        "title": "Skills",
+        "message": "Skill added",
+        "status": "success",
+        "code": 200,
+        "instructions": ""
+    },
+    "skills.skillRemoved": {
+        "title": "Skills",
+        "message": "Skill removed",
+        "status": "success",
+        "code": 200,
+        "instructions": ""
+    },
+    "skills.noSkill": {
+        "title": "Skills",
+        "message": "No skill",
+        "status": "error",
+        "code": 404,
+        "instructions": ""
+    },
+    "skills.hasSkill": {
+        "title": "Skills",
+        "message": "Has skill",
+        "status": "error",
+        "code": 404,
+        "instructions": ""
+    },
+    "skills.invalidSkill": {
+        "title": "Skills",
+        "message": "Invalid skill",
+        "status": "error",
+        "code": 404,
+        "instructions": ""
+    },
+
 
 
 
@@ -148,6 +238,18 @@
 
 
 
+
+
+
+    // █▀▄ ▄▀▄ ▄▀  ██▀ ▄▀▀ 
+    // █▀  █▀█ ▀▄█ █▄▄ ▄█▀ 
+    "page.notFound": {
+        "title": "Page",
+        "message": "Page not found",
+        "status": "error",
+        "code": 404,
+        "instructions": "This page was not found. Please check your link and try again."
+    },
 
 
     // █▀▄ ██▀ █▀▄ █▄ ▄█ █ ▄▀▀ ▄▀▀ █ ▄▀▄ █▄ █ ▄▀▀ 
@@ -233,5 +335,20 @@
         "status": "error",
         "code": 404,
         "instructions": "Please use a valid JSON array"
+    },
+
+
+
+
+
+
+    // ▄▀  ██▀ █▄ █ ██▀ █▀▄ ▄▀▄ █   
+    // ▀▄█ █▄▄ █ ▀█ █▄▄ █▀▄ █▀█ █▄▄ 
+    "profanity": {
+        "title": "Profanity",
+        "message": "Please remove the profanity from your message",
+        "status": "error",
+        "code": 404,
+        "instructions": ""
     }
 }

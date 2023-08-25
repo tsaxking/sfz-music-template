@@ -1,0 +1,55 @@
+[{
+    "name": "Home",
+    // lowercaseTitle converts spaces into hyphens
+    // url is the path to the page, it's the lowercase title with a slash in front
+    "keywords": [
+        // SEO Keywords
+    ],
+    "description": "", // SEO Description
+    "links": [{
+        "name": "Dashboard",
+        "html": "dashboard",
+        "icon": "<i class=\"material-icons\">dashboard</i>",
+        "prefix": "db"
+    }, {
+        "name": "Profile",
+        "pathname": "/member/profile",
+        "html": "profile",
+        "icon": "<i class=\"material-icons\">person</i>",
+        "prefix": "pr"
+        // same format as pages
+    }, {
+        "name": "Settings",
+        "pathname": "/member/settings",
+        "html": "settings",
+        "icon": "<i class=\"material-icons\">settings</i>",
+        "prefix": "st"
+    }], // Sub Pages (used for dropdowns)
+    "build": false // Whether or not to use the builder
+}]
+
+
+// type Link = {
+//     name: string;
+//     html: string;
+//     icon: string;
+//     pathname: string;
+//     scripts: string[];
+//     styles: string[];
+//     keywords: string[];
+//     description: string;
+//     screenInfo: {
+//         size: string;
+//         color: string
+//     };
+//     prefix: string;
+//     display: boolean;
+//     permission?: string;
+// };
+
+// type Page = {
+//     title: string;
+//     links: Link[];
+//     display: boolean;
+// };
+

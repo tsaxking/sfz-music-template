@@ -169,21 +169,21 @@ async function createTable(tableName: string, table: Table): Promise<TableStatus
 
     await Promise.all(Object.entries(columns).map(async ([columnName, {init}]) => {
         const query = `
-            SELECT "${columnName} "
-            FROM "${tableName}"
+            PRAGMA table_info("${tableName}")
         `;
 
-        try {
-            await MAIN.all(query);
-        } catch {
-            console.log(`Column ${columnName} does not exist in table ${tableName}, creating column`);
-            const query = `
-                ALTER TABLE "${tableName}"
-                ADD COLUMN "${columnName}" ${init}
-            `;
+        const result = await MAIN.all(query);
 
-            await MAIN.run(query);
-        }
+        if (result.find(({ name }) => name === columnName)) return TableStatus.EXISTS;
+
+
+        console.log(`Column ${columnName} does not exist in table ${tableName}, creating column`);
+        const newColQuery = `
+            ALTER TABLE "${tableName}"
+            ADD COLUMN "${columnName}" ${init}
+        `;
+
+        await MAIN.run(newColQuery);
     }));
 
     if (!rows) return TableStatus.SUCCESS;

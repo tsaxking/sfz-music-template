@@ -5,8 +5,9 @@ import Role from "./roles";
 import { NextFunction, Request, Response } from "express";
 import { Status } from "./status";
 import { validate } from 'deep-email-validator';
-import { Email, EmailType } from "./email";
+import { Email, EmailOptions, EmailType } from "./email";
 import { config } from 'dotenv';
+import Filter from 'bad-words';
 
 
 config();
@@ -17,13 +18,15 @@ type AccountObject = {
     key: string;
     salt: string;
     info: string; // json string
-    roles: string; // json string
-    name: string;
+    firstName: string;
+    lastName: string;
     email: string;
-    verified: number;
     passwordChange?: string;
-    tatorBucks: number;
     discordLink?: string; // json string
+    picture?: string;
+    verified: number;
+    verification?: string;
+    emailChange?: string; // json string
 }
 
 
@@ -46,10 +49,15 @@ export enum AccountStatus {
     emailTaken = 'emailTaken',
     notFound = 'notFound',
     created = 'created',
+    removed = 'removed',
+    checkEmail = 'checkEmail',
+    emailChangeExpired = 'emailChangeExpired',
 
     // verification
     alreadyVerified = 'alreadyVerified',
     notVerified = 'notVerified', 
+    verified = 'verified',
+    invalidVerificationKey = 'invalidVerificationKey',
 
     // login
     incorrectPassword = 'incorrectPassword',
@@ -61,7 +69,17 @@ export enum AccountStatus {
     // roles
     hasRole = 'hasRole',
     noRole = 'noRole',
+    invalidRole = 'invalidRole',
+    roleAdded = 'roleAdded',
+    roleRemoved = 'roleRemoved',
 
+
+    // skills
+    hasSkill = 'hasRole',
+    noSkill = 'noRole',
+    invalidSkill = 'invalidRole',
+    skillAdded = 'roleAdded',
+    skillRemoved = 'roleRemoved',
 
 
 
@@ -70,6 +88,12 @@ export enum AccountStatus {
     passwordChangeInvalid = 'passwordChangeInvalid',
     passwordChangeExpired = 'passwordChangeExpired',
     passwordChangeUsed = 'passwordChangeUsed'
+}
+
+export enum AccountDynamicProperty {
+    firstName = 'firstName',
+    lastName = 'lastName',
+    picture = 'picture'
 }
 
 
@@ -132,6 +156,24 @@ export default class Account {
         return a;
     }
 
+    static async fromVerificationKey(key: string): Promise<Account|null> {
+        const cachedAccount = Object.values(Account.cachedAccounts).find((a) => a.verification === key);
+
+        if (cachedAccount) return cachedAccount;
+
+        const query = `
+            SELECT * FROM Accounts
+            WHERE verification = ?
+        `;
+
+        const act = await MAIN.get(query, [key]);
+        if (!act) return null;
+
+        const account = new Account(act as AccountObject);
+        Account.cachedAccounts[account.username] = account;
+        return account;
+    }
+
     static async fromPasswordChangeKey(key: string): Promise<Account|null> {
         // find in cache
         for (const username in Account.cachedAccounts) {
@@ -150,26 +192,6 @@ export default class Account {
         const a = new Account(data as AccountObject);
         Account.cachedAccounts[a.username] = a;
         return a;
-    }
-
-    static async verifiedAccounts(): Promise<Account[]> {
-        const query = `
-            SELECT * FROM Accounts
-            WHERE verified = 1
-        `;
-
-        const data = await MAIN.all(query);
-        return data.map((a: AccountObject) => new Account(a));
-    }
-
-    static async unverifiedAccounts(): Promise<Account[]> {
-        const query = `
-            SELECT * FROM Accounts
-            WHERE verified = 0
-        `;
-
-        const data = await MAIN.all(query);
-        return data.map((a: AccountObject) => new Account(a));
     }
 
     static allowPermissions(...permission: string[]): NextFunction {
@@ -201,7 +223,7 @@ export default class Account {
     }
 
     static allowRoles(...role: string[]): NextFunction {
-        const fn = (req: Request, res: Response, next: NextFunction) => {
+        const fn = async (req: Request, res: Response, next: NextFunction) => {
             const { session } = req;
             const { account } = session;
 
@@ -209,9 +231,9 @@ export default class Account {
                 return Status.from('account.notLoggedIn', req).send(res);
             }
 
-            const { roles } = account;
+            const roles = await account.getRoles();
 
-            if (role.every(r => roles.includes(r))) {
+            if (role.every(r => roles.find(_r => _r.name === r))) {
                 return next();
             } else {
                 const s = Status.from('roles.invalid', req);
@@ -219,7 +241,7 @@ export default class Account {
             }
         }
 
-        return fn as NextFunction;
+        return fn as unknown as NextFunction;
     }
 
     static isSignedIn(req: Request, res: Response, next: NextFunction) {
@@ -239,11 +261,11 @@ export default class Account {
     static notSignedIn(req: Request, res: Response, next: NextFunction) {
         const { session: { account } } = req;
 
-        if (!account) {
-            return Status.from('account.serverError', req).send(res);
-        }
+        // if (!account) {
+        //     return Status.from('account.serverError', req).send(res);
+        // }
 
-        if (account.username !== 'guest') {
+        if (!!account) {
             return Status.from('account.loggedIn', req).send(res);
         }
 
@@ -288,13 +310,37 @@ export default class Account {
             '?', '/', '|', ',', '.', '~', '`'
         ];
 
-        return str
+        const invalidChars:string[] = [];
+
+        let valid = str
             .toLowerCase()
             .split('')
-            .every(char => allowedCharacters.includes(char));
+            .every(char => {
+                const validChar = allowedCharacters.includes(char);
+                if (!validChar) invalidChars.push(char);
+                return validChar;
+            });
+    
+
+        // test for bad words
+        const filtered = new Filter().clean(str);
+
+        if (filtered !== str) {
+            valid = false;
+            invalidChars.push(...str.split(' ').filter((word, i) => word !== filtered.split(' ')[i]));
+        }
+
+
+
+        if (!valid) {
+            console.log('Invalid characters/words:', invalidChars);
+        }
+
+
+        return valid;
     }
 
-    static async create(username: string, password: string, email: string, name: string): Promise<AccountStatus> {
+    static async create(username: string, password: string, email: string, firstName: string, lastName: string): Promise<AccountStatus> {
         if (await Account.fromUsername(username)) return AccountStatus.usernameTaken;
         if (await Account.fromEmail(email)) return AccountStatus.emailTaken;
 
@@ -303,7 +349,8 @@ export default class Account {
         if (!valid(username)) return AccountStatus.invalidUsername;
         if (!valid(password)) return AccountStatus.invalidPassword;
         if (!valid(email)) return AccountStatus.invalidEmail;
-        if (!valid(name)) return AccountStatus.invalidName;
+        if (!valid(firstName)) return AccountStatus.invalidName;
+        if (!valid(lastName)) return AccountStatus.invalidName;
 
         const emailValid = await validate({ email })
             .then((results) => !!results.valid)
@@ -320,11 +367,12 @@ export default class Account {
                 salt,
                 info,
                 roles,
-                name,
+                firstName,
+                lastName,
                 email,
                 verified
             ) VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?
+                ?, ?, ?, ?, ?, ?, ?, ?, ?
             )
         `;
 
@@ -334,25 +382,20 @@ export default class Account {
             salt,
             JSON.stringify({}),
             JSON.stringify([]),
-            name,
+            firstName,
+            lastName,
             email,
             0
         ]);
 
+        Account.fromUsername(username)
+            .then((a) => {
+                if (!a) return; // should never happen
+                a.sendVerification();
+            })
+            .catch(console.error);
+
         return AccountStatus.created;
-    }
-
-    static async verify(username: string): Promise<AccountStatus> {
-        const account = await Account.fromUsername(username);
-        if (!account) return AccountStatus.notFound;
-
-        return account.verify();
-    }
-
-    static async unVerify(username: string): Promise<AccountStatus> {
-        const account = await Account.fromUsername(username);
-        if (!account) return AccountStatus.notFound;
-        return account.unVerify();
     }
 
     // static async reject(username: string): Promise<AccountStatus> {}
@@ -368,23 +411,8 @@ export default class Account {
 
         await MAIN.run(query, [username]);
 
-        return AccountStatus.success;
+        return AccountStatus.removed;
     }
-
-    static async addRole(username: string, ...role: string[]): Promise<AccountStatus> {
-        const account = await Account.fromUsername(username);
-        if (!account) return AccountStatus.invalidUsername;
-        return account.addRole(...role);
-    }
-
-    static async removeRole(username: string, ...role: string[]): Promise<AccountStatus> {
-        const account = await Account.fromUsername(username);
-        if (!account) return AccountStatus.invalidUsername;
-        return account.removeRole(...role);
-    }
-
-
-
 
 
 
@@ -407,108 +435,379 @@ export default class Account {
     key: string;
     salt: string;
     info: AccountInfo;
-    roles: string[];
-    name: string;
+    firstName: string;
+    lastName: string;
     email: string;
-    verified: boolean;
     passwordChange?: string|null;
-    tatorBucks: number;
     discordLink?: DiscordLink;
+    picture?: string;
+    verified: number;
+    verification?: string;
+    emailChange?: {
+        email: string;
+        date: number;
+    } | null;
 
     constructor(obj: AccountObject) {
         this.username = obj.username;
         this.key = obj.key;
         this.salt = obj.salt;
         this.info = JSON.parse(obj.info) as AccountInfo;
-        this.roles = JSON.parse(obj.roles) as string[];
-        this.name = obj.name;
+        this.firstName = obj.firstName;
+        this.lastName = obj.lastName;
         this.email = obj.email;
-        this.verified = !!obj.verified;
         this.passwordChange = obj.passwordChange;
-        this.tatorBucks = obj.tatorBucks;
         this.discordLink = JSON.parse(obj.discordLink || '{}') as DiscordLink;
+        this.picture = obj.picture;
+        this.verified = obj.verified;
+        this.verification = obj.verification;
+
+        if (obj.emailChange) {
+            this.emailChange = JSON.parse(obj.emailChange) as {
+                email: string;
+                date: number;
+            };
+        }
     }
 
-    get safe() {
-        return {
-            username: this.username,
-            name: this.name,
-            email: this.email,
-            verified: this.verified,
-            tatorBucks: this.tatorBucks,
-            discordLink: this.discordLink
-        };
-    }
 
-    async addRole(...role: string[]): Promise<AccountStatus> {
-        const query = `
-            UPDATE Accounts
-            SET roles = ?
-            WHERE username = ?
-        `;
 
-        this.roles.push(...role);
-        this.roles = this.roles.filter((r, i) => this.roles.indexOf(r) === i); // Remove duplicates
-        await MAIN.run(query, [JSON.stringify(this.roles), this.username]);
+    async verify() {
+        if (this.emailChange) {
+            const { email, date } = this.emailChange;
+            const now = Date.now();
 
-        return AccountStatus.success;
-    }
+            // 30 minutes
+            if (now - date > 1000 * 60 * 30) {
+                return AccountStatus.emailChangeExpired;
+            }
 
-    async removeRole(...role: string[]): Promise<AccountStatus> {
-        const query = `
-            UPDATE Accounts
-            SET roles = ?
-            WHERE username = ?
-        `;
+            const query = `
+                UPDATE Accounts
+                SET email = ?, emailChange = null
+                WHERE username = ?
+            `;
 
-        this.roles = this.roles.filter(r => !role.includes(r));
-        await MAIN.run(query, [JSON.stringify(this.roles), this.username]);
+            await MAIN.run(query, [email, this.username]);
+            this.email = email;
+            delete this.emailChange;
 
-        return AccountStatus.success;
-    }
+            return AccountStatus.verified;
+        }
 
-    async verify(): Promise<AccountStatus> {
-        if (this.verified) return AccountStatus.alreadyVerified;
 
         const query = `
             UPDATE Accounts
-            SET verified = ?
+            SET verified = 1, verification = null
+        `;
+
+        await MAIN.run(query);
+        this.verified = 1;
+        delete this.verification;
+
+        return AccountStatus.verified;
+    }
+
+
+    async sendVerification() {
+        const key = uuid();
+        const query = `
+            UPDATE Accounts
+            SET verification = ?
             WHERE username = ?
         `;
 
-        await MAIN.run(query, [1, this.username]);
+        await MAIN.run(query, [key, this.username]);
 
-        const e = new Email(this.email, 'Account Verified', EmailType.link, {
+        const email = new Email(this.email, 'Verify your account', EmailType.link, {
             constructor: {
-                title: 'Account Verified',
-                message: 'Please click the link below to go to the login page',
-                link: `${process.env.DOMAIN}/account/sign-in`,
-                linkText: 'Sign In'
+                link: `${process.env.DOMAIN}/account/verify/${key}`,
+                linkText: 'Click here to verify your account',
+                title: 'Verify your account',
+                message: 'Click the button below to verify your account'
             }
         });
 
-        this.verified = true;
-        return AccountStatus.success;
+        return email.send();
     }
 
-    async unVerify(): Promise<AccountStatus> {
-        if (!this.verified) return AccountStatus.notVerified;
 
+    async safe(include?: {
+        roles?: boolean;
+        memberInfo?: boolean;
+        permissions?: boolean;
+        email?: boolean;
+    }) {
+        return {
+            username: this.username,
+            firstName: this.firstName,
+            lastName: this.lastName,
+            picture: this.picture,
+            email: include?.email ? this.email : undefined,
+            roles: include?.roles ? await this.getRoles() : [],
+            memberInfo: include?.memberInfo ? await this.getMemberInfo() : undefined,
+            permissions: include?.permissions ? await this.getPermissions() : []
+        };
+    }
+
+
+
+
+
+    async getMemberInfo(): Promise<{
+        skills: string[];
+        bio: string;
+        title: string;
+        resume: string|null;
+    }> {
         const query = `
-            UPDATE Accounts
-            SET verified = ?
+            SELECT * FROM MemberInfo
             WHERE username = ?
         `;
 
-        await MAIN.run(query, [0, this.username]);
+        const result = await MAIN.get(query, [this.username]);
 
-        this.verified = false;
+        return {
+            skills: await this.getSkills(),
+            bio: result?.bio || '',
+            title: result?.title || '',
+            resume: result?.resume || null
+        };
+    }
+
+    async sendEmail(subject: string, type: EmailType, options: EmailOptions) {
+        const email = new Email(this.email, subject, type, options);
+        return email.send();
+    }
+
+
+
+
+
+
+
+    async getRoles(): Promise<Role[]> {
+        const query = `
+            SELECT * FROM AccountRoles
+            WHERE username = ?
+        `;
+
+        const data = await MAIN.all(query, [this.username]);
+
+        return Promise.all(data.map(({ role }) => {
+            return Role.fromName(role);
+        }));
+    }
+
+    async addRole(...roles: string[]): Promise<AccountStatus[]> {
+        return Promise.all(roles.map(async (role) => {
+            const r = await Role.fromName(role);
+            if (!r) return AccountStatus.noRole;
+
+            if ((await this.getRoles()).find(_r => _r.name === r.name)) {
+                return AccountStatus.hasRole;
+            }
+
+            const query = `
+                INSERT INTO AccountRoles (
+                    username,
+                    role
+                ) VALUES (
+                    ?, ?
+                )
+            `;
+
+            await MAIN.run(query, [this.username, role]);
+
+            return AccountStatus.roleAdded;
+        }));
+    }
+
+    async removeRole(...role: string[]): Promise<AccountStatus[]> {
+        return Promise.all(role.map(async(role) => {
+            const r = await Role.fromName(role);
+            if (!r) return AccountStatus.noRole;
+
+            if (!(await this.getRoles()).find(_r => _r.name === r.name)) {
+                return AccountStatus.noRole;
+            }
+
+            const query = `
+                DELETE FROM AccountRoles
+                WHERE username = ? AND role = ?
+            `;
+
+            await MAIN.run(query, [this.username, role]);
+
+            return AccountStatus.roleRemoved;
+        }));
+    }
+
+
+
+
+
+
+
+    async addSkill(...skills: { skill: string, years: number }[]): Promise<AccountStatus[]> {
+        return Promise.all(skills.map(async(skill) => {
+            const existsQuery = `
+                SELECT * FROM MemberSkills
+                WHERE username = ? AND skill = ?
+            `;
+
+            const exists = await MAIN.get(existsQuery, [this.username, skill.skill]);
+            if (exists) return AccountStatus.hasSkill;
+
+            const query = `
+                INSERT INTO MemberSkills (
+                    username,
+                    skill,
+                    years
+                ) VALUES (
+                    ?, ?, ?
+                )
+            `;
+
+            await MAIN.run(query, [this.username, skill.skill, Math.round(skill.years * 10) / 10]);
+            return AccountStatus.skillAdded;
+        }));
+    }
+
+    async removeSkill(...skills: string[]): Promise<AccountStatus[]> {
+        return Promise.all(skills.map(async(skill) => {
+            const existsQuery = `
+                SELECT * FROM MemberSkills
+                WHERE username = ? AND skill = ?
+            `;
+
+            const exists = await MAIN.get(existsQuery, [this.username, skill]);
+            if (!exists) return AccountStatus.noSkill;
+
+            const query = `
+                DELETE FROM MemberSkills
+                WHERE username = ? AND skill = ?
+            `;
+
+            await MAIN.run(query, [this.username, skill]);
+            return AccountStatus.skillRemoved;
+        }));
+    }
+
+    async getSkills(): Promise<string[]> {
+        const query = `
+            SELECT * FROM MemberSkills
+            WHERE username = ?
+        `;
+
+        const data = await MAIN.all(query, [this.username]);
+        return data.map((d: { skill: string }) => d.skill);
+    }
+
+
+
+
+
+    async getPermissions(): Promise<PermissionsObject> {
+        const roles = await this.getRoles();
+
+        let perms = roles.reduce((acc, role) => {
+            acc.permissions.push(...role.permissions);
+            acc.rank = Math.min(acc.rank, role.rank);
+            return acc;
+        }, {
+            permissions: [],
+            rank: Infinity
+        } as PermissionsObject);
+
+        perms.permissions = perms.permissions
+            .filter((p, i) => perms.permissions.indexOf(p) === i); // Remove duplicates
+
+        return perms;
+    }
+
+
+
+    async change(property: AccountDynamicProperty, to: string): Promise<AccountStatus> {
+        if (property !== AccountDynamicProperty.picture &&!Account.valid(to)) {
+            return AccountStatus.invalidName;
+        }
+
+        const query = `
+            UPDATE Accounts
+            SET ${property} = ?
+            WHERE username = ?        
+        `;
+
+        await MAIN.run(query, [to, this.username]);
+
+        this[property] = to;
+
         return AccountStatus.success;
     }
 
+
+    async changeUsername(username: string): Promise<AccountStatus> {
+        const findQuery = `
+            SELECT * FROM Accounts
+            WHERE username = ?
+        `;
+
+        if (await MAIN.get(findQuery, [username])) return AccountStatus.usernameTaken;
+
+        const query = `
+            UPDATE Accounts
+            SET username = ?
+            WHERE username = ?
+        `;
+
+        await MAIN.run(query, [username, this.username]);
+
+        this.username = username;
+
+        return AccountStatus.success;
+    }
+
+
+    
+
+
+    
     testPassword(password: string): boolean {
         const hash = Account.hash(password, this.salt);
         return hash === this.key;
+    }
+
+
+    async changeEmail(email: string) {
+        const existsQuery = `
+            SELECT * FROM Accounts
+            WHERE email = ?
+        `;
+
+        const exists = await MAIN.get(existsQuery, [email]);
+
+        if (exists) return AccountStatus.emailTaken;
+
+        const query = `
+            UPDATE Accounts
+            SET emailChange = ?
+            WHERE username = ?
+        `;
+
+        this.emailChange = {
+            email,
+            date: Date.now()
+        }
+
+        MAIN.run(query, [
+            JSON.stringify(this.emailChange),
+            this.username
+        ]);
+
+        this.sendVerification();
+
+        return AccountStatus.checkEmail;
     }
 
     async requestPasswordChange(): Promise<string> {
@@ -541,24 +840,6 @@ export default class Account {
         this.salt = salt;
         this.passwordChange = null;
 
-        return AccountStatus.success;
-    }
-
-    async getPermissions(): Promise<PermissionsObject> {
-        const roles = await Promise.all(this.roles.map(r => Role.fromName(r)));
-
-        let perms = roles.reduce((acc, role) => {
-            acc.permissions.push(...role.permissions);
-            acc.rank = Math.min(acc.rank, role.rank);
-            return acc;
-        }, {
-            permissions: [],
-            rank: Infinity
-        } as PermissionsObject);
-
-        perms.permissions = perms.permissions
-            .filter((p, i) => perms.permissions.indexOf(p) === i); // Remove duplicates
-
-        return perms;
+        return AccountStatus.passwordChangeSuccess;
     }
 };

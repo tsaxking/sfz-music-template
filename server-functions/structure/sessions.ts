@@ -10,16 +10,25 @@ import { Socket } from 'socket.io';
 type CustomRequest = Request & { session: Session };
 
 
+
 type SocketEmit = {
     event: string;
     args: any;
     room?: string;
+    time: Date;
 }
+
+
+
 
 
 export class Session {
     static middleware(req: CustomRequest, res: Response, next: NextFunction) {
-        if (!req.session) {
+        const id = req.headers.cookie ? parseCookie(req.headers.cookie).ssid : null;
+
+        if (id && Session.sessions[id]) {
+            req.session = Session.sessions[id];
+        } else {
             req.session = new Session(req, res);
             Session.addSession(req.session);
         }
@@ -34,17 +43,16 @@ export class Session {
         Session._sessions[session.id] = session;
         if (!session.account) {
             session.signOut();
-            session.account = new Account({
-                username: 'guest',
-                key: '',
-                salt: '',
-                verified: 1,
-                roles: JSON.stringify(['guest']),
-                email: '',
-                name: 'Guest',
-                tatorBucks: 0,
-                info: '{}'
-            })
+            // session.account = new Account({
+            //     username: 'guest',
+            //     key: '',
+            //     salt: '',
+            //     verified: 1,
+            //     // roles: JSON.stringify(['guest']),
+            //     email: '',
+            //     name: 'Guest',
+            //     info: '{}'
+            // });
         }
     }
     static removeSession(session: Session) {
@@ -98,23 +106,7 @@ export class Session {
         if (!id) return false;
         const session = Session.sessions[id];
         if (!session) return false;
-        session.sockets.push({
-            socket,
-            queue: []
-        } as {
-            socket: Socket,
-            queue: SocketEmit[]
-        });
-
-        socket.on('reconnect', () => {
-            const s = session.sockets.find(s => s.socket.id === socket.id);
-            if (!s) return;
-            s.queue.forEach(q => {
-                if (q.room) return socket.to(q.room).emit(q.event, ...q.args);
-                socket.emit(q.event, ...q.args);
-            });
-        });
-
+        session.setSocket(socket);
         return true;
     }
 
@@ -123,7 +115,10 @@ export class Session {
     ip: string|null;
     id: string;
     latestActivity: number = Date.now();
-    account: Account|null = null;
+    account: Account | null = null;
+    prevUrl?: string;
+    
+    
     private readonly sockets: {
         socket: Socket,
         queue: SocketEmit[]
@@ -131,7 +126,11 @@ export class Session {
     readonly socket = {
         emit: (event: string, ...args: any[]) => {
             this.sockets.forEach(s => {
-                if (!s.socket.connected) return s.queue.push({ event, args });
+                if (!s.socket.connected) return s.queue.push({ 
+                    event, 
+                    args,
+                    time: new Date()
+                });
                 
                 s.socket.emit(event, ...args);
             });
@@ -142,7 +141,12 @@ export class Session {
                     for (const s of this.sockets) {
                         if (!s.socket.rooms.has(room)) continue;
                         if (!s.socket.connected) {
-                            s.queue.push({ event, args, room });
+                            s.queue.push({ 
+                                event, 
+                                args, 
+                                room,
+                                time: new Date()
+                            });
                             continue;
                         }
                         s.socket.to(room).emit(event, ...args);
@@ -161,6 +165,21 @@ export class Session {
             httpOnly: true,
             maxAge: 1000 * 60 * 60 * 24 * 365 * 10 // 10 years
         });
+    }
+
+    setSocket(socket: Socket) {
+        this.sockets.push({
+            socket,
+            queue: []
+        });
+    }
+
+    getSocket(req: Request): Socket|undefined {
+        const cookie = req.headers.cookie;
+        if (!cookie) throw new Error('No cookie');
+        const socket = this.sockets.find(s => s.socket.id === req.body.socketId);
+        // if (!socket) throw new Error('No socket');
+        return socket?.socket;
     }
 
     signIn(account: Account) {

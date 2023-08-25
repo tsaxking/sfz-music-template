@@ -180,6 +180,7 @@ export class Status {
             username: request.session.account?.username,
             ip: request.session.ip,
             email: request.session.account?.email,
+            request: request.originalUrl,
             title,
             code,
             data: data == '{}' ? 'No data provided.' : data
@@ -228,7 +229,8 @@ export class Status {
             status: this.status,
             code: this.code,
             instructions: this.instructions,
-            data: JSON.parse(this.data || '{}')
+            data: JSON.parse(this.data || '{}'),
+            redirect: this.redirect
         }
     }
 

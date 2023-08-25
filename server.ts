@@ -1,19 +1,17 @@
-import express, { NextFunction } from 'express';
-import { Server } from 'socket.io';
+import express, { NextFunction, Request, Response } from 'express';
+import { Server, Socket } from 'socket.io';
 import * as http from 'http';
 import * as path from 'path';
 import * as fs from 'fs';
-import ObjectsToCsv from 'objects-to-csv';
-import { getClientIp } from 'request-ip';
 import { Session } from './server-functions/structure/sessions';
-import builder from './server-functions/page-builder';
 import { emailValidation } from './server-functions/middleware/spam-detection';
 import { Worker, isMainThread, workerData, parentPort } from 'worker_threads';
 import { config } from 'dotenv';
 import './server-functions/declaration-merging/express.d.ts';
 import { Status } from './server-functions/structure/status';
+import { SocketWrapper } from './server-functions/structure/socket';
 import Account from './server-functions/structure/accounts';
-import { navbarBuilder } from './server-functions/builders/links';
+import { getTemplateSync, getJSON, LogType, log, getTemplate, getJSONSync } from './server-functions/files';
 
 config();
 
@@ -23,16 +21,25 @@ declare global {
             session: Session;
             start: number;
             io: Server;
-
-            file?: CustomFile;
+            file?: {
+                id: string;
+                name: string;
+                size: number;
+                type: string;
+                ext: string;
+                contentType: string;
+                filename: string
+            }
+            socketIO?: SocketWrapper;
         }
     }
 }
 
 
+
 const { PORT, DOMAIN } = process.env;
 
-const [,, env, ...args] = workerData?.args || process.argv;
+const [,, env, ...args] = workerData?.args ? [,,...workerData.args] : process.argv;
 
 
 const app = express();
@@ -77,7 +84,9 @@ io.on('connection', (socket) => {
 
 
 
-    socket.on('disconnect', () => console.log('user disconnected'));
+    socket.on('disconnect', () => {
+        // reconnect
+    });
 });
 
 app.use(express.urlencoded({ extended: true }));
@@ -86,13 +95,21 @@ app.use('/static', express.static(path.resolve(__dirname, './static')));
 app.use('/uploads', express.static(path.resolve(__dirname, './uploads')));
 
 
+
 app.use((req, res, next) => {
     req.io = io;
     req.start = Date.now();
-    console.log(req.ip);
+
+    const { cookie } = req.headers;
+    const { tab } = parseCookie(cookie || '');
+    if (!tab) return next();
+    if (SocketWrapper.sockets[tab]) {
+        req.socketIO = SocketWrapper.sockets[tab];
+    }
 
     next();
 });
+
 
 function stripHtml(body: any) {
     let files: any;
@@ -136,6 +153,7 @@ function stripHtml(body: any) {
 // logs body of post request
 app.post('/*', (req, res, next) => {
     req.body = stripHtml(req.body);
+    console.log(req.body);
     next();
 });
 
@@ -189,10 +207,10 @@ app.use((req, res, next) => {
 
 app.post('/*', emailValidation(['email', 'confirmEmail'], {
     onspam: (req, res, next) => {
-        res.json({ error: 'spam' });
+        Status.from('spam', req).send(res);
     },
     onerror: (req, res, next) => {
-        res.json({ error: 'error' });
+        Status.from('spam', req).send(res);
     }
 }));
 
@@ -205,6 +223,31 @@ app.post('/*', emailValidation(['email', 'confirmEmail'], {
 
 // this can be used to build pages on the fly and send them to the client
 // app.use(builder);
+
+
+const homePages = getJSONSync('pages/home') as string[];
+import { homeBuilder, navBuilder } from './server-functions/page-builder';
+
+app.get('/', (req, res, next) => {
+    res.redirect('/home');
+});
+
+app.get('/*', async (req, res, next) => {
+    if (homePages.includes(req.url.slice(1))) {
+        return res.send(
+            await homeBuilder(req.url)
+        );
+    }
+    next();
+});
+
+
+
+
+
+
+
+
 
 
 import accounts from './server-functions/routes/account';
@@ -225,8 +268,11 @@ app.use(async (req, res, next) => {
 
 
 app.use((req, res, next) => {
+    // console.log(req.session.account);
     if (!req.session.account) {
-        return Status.from('account.notLoggedIn', req).send(res);
+        // return Status.from('account.notLoggedIn', req).send(res);
+        req.session.prevUrl = req.originalUrl;
+        return res.redirect('/account/sign-in');
     }
     next();
 });
@@ -239,7 +285,7 @@ app.use((req, res, next) => {
 
 
 import admin from './server-functions/routes/admin';
-import { getTemplateSync, getJSON, log, LogType, getTemplate, CustomFile } from './server-functions/files';
+import { parseCookie } from './server-functions/structure/cookie';
 app.use('/admin', admin);
 
 
@@ -270,94 +316,106 @@ type Link = {
 };
 
 type Page = {
-    title: string;
+    name: string;
     links: Link[];
     display: boolean;
 };
 
 
-app.get('/get-links', async (req, res) => {
-    const pages = await getJSON('pages') as Page[];
 
-    // at this point, account should exist because of the middleware above
-    const permissions = await req.session.account?.getPermissions();
 
-    let links: any[] = [];
-    pages.forEach(page => {
-        links = [
-            ...links,
-            ...page.links.filter(l => {
-                if (l.permission) {
-                    // console.log(l.permission, permissions[l.permission]);
-                    return permissions ? permissions[l.permission] : false; 
-                } else return l.display;
-            })
-        ];
-    });
-    res.json(links.filter(l => l.display));
+
+app.use('/404', (req, res) => {
+    Status.from('page.notFound', req).send(res);
 });
 
 
 
 
+const getBlankTemplate = (page: string): NextFunction => {
+    const fn = async (req: Request, res: Response) => {
 
-app.get('/*', Account.isSignedIn, async (req, res, next) => {
-    const permissions = await req.session.account?.getPermissions();
+        const { page: requestedPage } = req.params;
 
-    if (permissions?.permissions.includes('logs')) {
-        req.session.socket?.join('logs');
-    }
+        // const permissions = await req.session.account?.getPermissions();
 
-    const [pages, metadata, navbar] = await Promise.all([
-        getJSON('pages') as Promise<Page[]>,
-        getJSON('metadata') as Promise<{ [key: string]: any }>,
-        navbarBuilder(req.url, req.session)
-    ]);
+        // if (permissions?.permissions.includes('logs')) {
+        //     req.session.getSocket(req)?.join('logs');
+        // }
 
-    const cstr = {
-        pagesRepeat: pages.map(page => {
-            return page.links.map(l => {
-                return {
-                    title: l.name,
-                    content: getTemplateSync(l.html),
-                    lowercaseTitle: l.name.toLowerCase().replace(/ /g, '-'),
-                    prefix: l.prefix 
-                }
-            })
-        }).flat(Infinity),
-        navSections: pages.map(page => {
-            return [
-                {
-                    title: page.title,
-                    type: 'navTitle'
-                },
-                ...page.links.map(l => {
+
+        const pages = await getJSON('pages/' + page) as Page[];
+
+        // const links = pages.map(p => p.links).some(linkList => linkList.some(l =>  l.pathname === req.originalUrl));
+
+        // if (!links) return res.redirect(`/${page}` + pages[0].links[0].pathname);
+
+        const cstr = {
+            pages: (await Promise.all(pages.map(async p => {
+                return Promise.all(p.links.map(async l => {
+                    if (l.display === false) return;
                     return {
-                        name: l.name,
-                        type: 'navLink',
-                        pathname: l.pathname,
-                        icon: l.icon,
+                        title: l.name,
+                        content: await getTemplate(`dashboards/${page}/` + l.html),
                         lowercaseTitle: l.name.toLowerCase().replace(/ /g, '-'),
-                        prefix: l.prefix
+                        prefix: l.prefix,
+                        year: new Date().getFullYear()
                     }
-                })
-            ];
-        }).flat(Infinity),
-        year: new Date().getFullYear(),
-        description: metadata.description + '\n\n' + navbar.description,
-        keywords: [metadata.keywords, navbar.keywords].flat(Infinity),
-        navbar: navbar.html
+                }))
+            }))).flat(Infinity).filter(Boolean),
+
+
+            navSections: pages.flatMap(page => {
+                return [
+                    {
+                        navScript: {
+                            title: page.name,
+                            type: 'navTitle'
+                        }
+                    },
+                    ...page.links.map(l => {
+                        if (l.display === false) return;
+                        return {
+                            navScript: {
+                                name: l.name,
+                                type: 'navLink',
+                                pathname: l.pathname,
+                                icon: l.icon,
+                                lowercaseTitle: l.name.toLowerCase().replace(/ /g, '-'),
+                                prefix: l.prefix
+                            }
+                        }
+                    })
+                ];
+            }).flat(Infinity).filter(Boolean),
+
+
+            description: 'sfzMusic Dashboard',
+            keywords: 'sfzMusic, Dashboard',
+            offcanvas: true,
+            navbar: await navBuilder(req.url, true),
+            year: new Date().getFullYear(),
+            script: await getTemplate('dashboards/' + page + '/script'),
+        };
+
+        console.log(cstr.pages);
+
+        const html = await getTemplate('dashboard-index', cstr);
+        res.status(200).send(html);
     };
 
-    const html = await getTemplate('index', cstr);
-    res.status(200).send(html);
-});
+    return fn as unknown as NextFunction;
+};
 
 
 
 
 
-
+app.get('/member/:page', Account.isSignedIn, getBlankTemplate('member'));
+// app.get('/instructor/:page', Account.isSignedIn, getBlankTemplate('instructor'));
+app.get('/admin/:page', Account.allowRoles('admin'), getBlankTemplate('admin'));
+// app.get('/student/:page', Account.isSignedIn, getBlankTemplate('student'));
+// app.get('/library/:page', Account.isSignedIn, getBlankTemplate('library'));
 
 
 
@@ -434,7 +492,7 @@ app.use((req, res, next) => {
 
 
 const clearLogs = () => {
-    fs.writeFileSync('./logs.csv', '');
+    fs.writeFileSync('./logs/request.csv', '');
     logCache = [];
 }
 

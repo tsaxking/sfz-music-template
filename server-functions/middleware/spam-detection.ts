@@ -40,7 +40,7 @@ export type Options = {
 
 export const emailValidation = (keys: string[], options: Options = {}): NextFunction => {
     const fn = (req: Request, res: Response, next: NextFunction) => {
-        const arr = keys.map(key => req.body[key]);
+        const arr = keys.map(key => req.body[key]).filter(Boolean);
 
         if (!arr.length) return next();    
 

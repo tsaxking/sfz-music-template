@@ -3,48 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>sfzMusic: {{ title }}</title>
+    <title>sfzMusic: {{ pageTitle }}</title>
+
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    
-    <nav id="navbar" class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top shadow align-items-center" style="height: 56px;">
-        <a class="navbar-brand fw-bold pr-5 text-light" href="/home">&nbsp; sfzMusic</a>
+    {{ navbar }}
 
-        <div class="collapse navbar-collapse bg-dark" id="aboutNavbar">
-            <ul class="navbar-nav align-items-end">
-                {{ mainLinks }}
-                <cstr cstr-type="repeat" id="aboutNavigation">
-                    <li class="nav-item">
-                        <a href="/about{{ link }}" class="nav-link {{ classes }}">{{ title }}</a>
-                    </li>
-                </cstr>
-                <li>
-                    <a href="/dashboard" class="btn btn-primary">Get Started</a>
-                </li>
-                <li class="nav-item dropdown">
-                    {{ accountDropdown }}
-                </li>
-            </ul>
+    <div class="container">
+        <h1 class="text-center">sfzMusic: {{ pageTitle }}</h1>
+        {{ content }}
+    </div>
 
-        </div>
-        <!-- Toggle navigation -->
-        <a class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#aboutNavbar" aria-controls="aboutNavbar" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="material-icons">menu</span>
-        </a>
-    </nav>
-    <!-- <main> -->
-    {{ content }}
-    <!-- </main> -->
     {{ footer }}
-
-
-
-    <script src="sfz-music.js"></script>
-    <script>
-        document.addEventListener('click', () => {
-            $('#aboutNavbar').collapse('hide');
-        });
-    </script>
 </body>
 </html>
