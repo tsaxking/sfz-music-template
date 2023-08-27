@@ -11,8 +11,6 @@ type Query = {
 class Page {
     static readonly dashboardName = window.location.pathname.split('/')[1];
 
-
-
     static pages: {
         [key: string]: Page;
     } = {};
@@ -53,14 +51,16 @@ class Page {
     readonly lowercaseName: string;
     readonly body: HTMLElement|null;
 
-    constructor(public readonly name: string, public readonly home?: boolean) {
-
+    constructor(
+        public readonly name: string, 
+        public readonly home?: boolean
+    ) {
         this.lowercaseName = this.name.toLowerCase().replaceAll(' ', '-');
         this.body = document.querySelector(`#${this.lowercaseName}--page-body`);
 
         Page.addPage(this);
         this.el = document.querySelector(`#${this.lowercaseName}`);
-        this.link = document.querySelector(`a[data-target="${this.name.toLowerCase().replaceAll(' ', '-')}"]`);
+        this.link = document.querySelector(`a[data-target="${this.lowercaseName}"]`);
 
         if (this.link && this.el) {
             this.link.addEventListener('click', (e) => {
@@ -69,7 +69,6 @@ class Page {
             });
         }
     }
-
 
     open(query?: Query) {
         if (Page.current === this) return;
@@ -131,9 +130,6 @@ class Page {
         if (this.events[event]) return console.error(`Event ${event} already exists`);
         this.events[event] = callback;
     }
-
-
-
 
     newUpdate(event: string, callback: (...args: any[]) => void, filter?: (...args: any[]) => boolean) {
         const listener = SocketWrapper.listeners[event];

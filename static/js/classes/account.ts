@@ -59,6 +59,57 @@ class Account {
         }
     }
 
+    manageModal() {
+        const tabNav = CBS.createElement('tab-nav');
+        const container = CBS.createElement('container');
+        container.addRow().append(tabNav);
+        container.addRow().append(tabNav.container);
+
+
+
+        tabNav.addPage('View', 'view');
+        tabNav.addPage('Edit', 'edit');
+
+
+
+
+
+    }
+
+    editForm(): CBS_Container {
+        const mainContainer = CBS.createElement('container');
+
+        const elements = {
+            username: 'text',
+            email: 'email',
+            firstName: 'text',
+            lastName: 'text',
+            picture: 'file',
+            bio: 'text',
+            title: 'text'
+        };
+
+        for (const [key, value] of Object.entries(elements)) {
+            const input = CBS.createElement('input', {
+                attributes: {
+                    type: value
+                }
+            });
+            input.value = this[key as keyof Account];
+            const label = CBS.createElement('label', {
+                attributes: {
+                    for: key
+                }
+            }).append(key);
+
+            const row = mainContainer.addRow();
+            row.addCol
+        }
+    }
+
+
+
+
     async changeUsername(username: string) {
         return ServerRequest.new('/account/change-username', {
             username: this.username,

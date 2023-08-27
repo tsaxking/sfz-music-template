@@ -1,10 +1,20 @@
+// class AdminAccounts extends Page {
+//     public readonly data: {
+//         roleDropdown?: CBS_SelectInput,
+//         userTable?: CBS_Table,
+//         userTableHeaders?: CBS_TableRow,
+//         userTableBody?: CBS_TableRow,
+//         tableHeaders?: string[]
+//     } = {};
+// }
+
 const adminAccounts = new Page('Accounts');
 
-const roleDropdown = CBS.createElement('select');
+adminAccounts.data.roleDropdown = CBS.createElement('select');
 
-const userTable = CBS.createElement('table');
-const userTableHeaders = userTable.addHead().addRow();
-const userTableBody = userTable.addBody();
+adminAccounts.data.userTable = CBS.createElement('table');
+adminAccounts.data.userTableHeaders = adminAccounts.data.userTable.addHead().addRow();
+adminAccounts.data.userTableBody = adminAccounts.data.userTable.addBody();
 
 const tableHeaders: string[] = [
     'Username',
@@ -16,27 +26,30 @@ const tableHeaders: string[] = [
 ];
 
 for (const header of tableHeaders) {
-    userTableHeaders.addHeader().content = header;
+    adminAccounts.data.userTableHeaders.addHeader(header);
 }
 
 
-roleDropdown.on('change', () => {
-    const { value } = roleDropdown;
+adminAccounts.data.roleDropdown.on('change', () => {
+    const { value } = adminAccounts.data.roleDropdown;
 });
 
 
 const addAccount = (account: Account) => {
-    const row = userTableBody.addRow();
+    const row = adminAccounts.data.userTableBody.addRow();
 
     for (const header of tableHeaders) {
         if (header === 'Roles') {
             continue;
         }
 
-        row.addData().content = account[toCamelCase(header)];
+        row.addCell(account[toCamelCase(header)]);
     }
 
-    row.on('click', () => {});
+    row.on('click', () => {
+        // opens a modal to manage the account
+        account.manageModal();
+    });
 };
 
 
@@ -46,12 +59,12 @@ adminAccounts.on(PageEvent.OPEN, async () => {
         Role.all()
     ]);
 
-    roleDropdown.clearElements();
+    adminAccounts.data.roleDropdown.clearElements();
 
-    roleDropdown.addOption('All', 'all');
+    adminAccounts.data.roleDropdown.addOption('All', 'all');
 
     for (const role of roles) {
-        roleDropdown.addOption(capitalize(role.name), role.name);
+        adminAccounts.data.oleDropdown.addOption(capitalize(role.name), role.name);
     }
 
     for (const account of accounts) {

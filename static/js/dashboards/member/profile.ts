@@ -1,12 +1,31 @@
+type ProfileSkillList = {
+    list: CBS_List,
+    elements: {
+        [key: string]: ProfileListEl;
+    }
+}
+
+// class MemberProfile extends Page {
+//     public readonly data: {
+//         input: {
+//             [key: string]: CBS_InputSubmit;
+//         },
+//         skills: ProfileSkillList,
+//         roles: ProfileSkillList,
+//         openProfile: () => void;
+//     } = {};
+// }
+
 const memberProfile = new Page('Profile');
 
 class CBS_InputSubmit extends CBS_Component {
-    static create(name: string, type: string) {
+    static create(name: string, type: string, button: CBS_Node) {
         const input = new CBS_InputSubmit();
         input.subcomponents.label.setAttribute('for', name);
         input.subcomponents.label.content = capitalize(fromCamelCase(name));
         input.subcomponents.input.setAttribute('type', type);
         input.subcomponents.input.setAttribute('name', name);
+        input.subcomponents.button.content = button;
 
         return input;
     }
@@ -21,7 +40,6 @@ class CBS_InputSubmit extends CBS_Component {
     constructor(options?: CBS_Options) {
         super(options);
 
-        this.subcomponents.submit.content = '<i class="material-icons">save</i>'
         this.subcomponents.submit.addClass('btn-success');
 
         const container = CBS.createElement('container');
@@ -53,12 +71,11 @@ type ProfileInputMap = {
 }
 
 memberProfile.data.inputs = {
-    username: CBS_InputSubmit.create('username', 'text'),
-    email: CBS_InputSubmit.create('email', 'email'),
-    firstName: CBS_InputSubmit.create('firstName', 'text'),
-    lastName: CBS_InputSubmit.create('lastName', 'text'),
-    picture: CBS_InputSubmit.create('picture', 'file'),
-    skill: CBS_InputSubmit.create('skill', 'text')
+    username: CBS_InputSubmit.create('username', 'text', CBS_MaterialIcon.fromTemplate('save')),
+    email: CBS_InputSubmit.create('email', 'email', CBS_MaterialIcon.fromTemplate('save')),
+    firstName: CBS_InputSubmit.create('firstName', 'text', CBS_MaterialIcon.fromTemplate('save')),
+    lastName: CBS_InputSubmit.create('lastName', 'text', CBS_MaterialIcon.fromTemplate('save')),
+    picture: CBS_InputSubmit.create('picture', 'file', CBS_MaterialIcon.fromTemplate('save'))
 }
 
 for (const [key, row] of Object.entries(memberProfile.data.inputs as ProfileInputMap)) {
