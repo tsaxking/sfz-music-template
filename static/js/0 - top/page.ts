@@ -50,6 +50,7 @@ class Page {
     readonly updates: ViewUpdate[] = [];
     readonly lowercaseName: string;
     readonly body: HTMLElement|null;
+    readonly dom: CBS_Document;
 
     constructor(
         public readonly name: string, 
@@ -57,6 +58,7 @@ class Page {
     ) {
         this.lowercaseName = this.name.toLowerCase().replaceAll(' ', '-');
         this.body = document.querySelector(`#${this.lowercaseName}--page-body`);
+        this.dom = CBS.createDomFromElement(this.body as HTMLDivElement);
 
         Page.addPage(this);
         this.el = document.querySelector(`#${this.lowercaseName}`);
@@ -136,7 +138,7 @@ class Page {
         if (!listener) return console.error(`Event ${event} does not exist`);
 
 
-        const vu = new ViewUpdate(this.name, callback, filter);
+        const vu = new ViewUpdate(event, this.name, callback, filter);
         listener.add(vu);
         return vu;
     }

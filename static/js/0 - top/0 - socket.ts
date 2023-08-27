@@ -18,9 +18,23 @@ class ViewUpdateWrapper {
 
 
 class SocketListener {
+    public static readonly listeners: {
+        [key: string]: SocketListener;
+    } = {};
+
+    private static addListener(listener: SocketListener) {
+        if (SocketListener.listeners[listener.event]) 
+            return console.error(
+                new Error(`Event ${listener.event} already has a listener`));
+    }
+
+
+
     updates: ViewUpdate[] = [];
 
-    constructor(public readonly event: string) {}
+    constructor(public readonly event: string) {
+        SocketListener.addListener(this);
+    }
 
     add(viewUpdate: ViewUpdate) {
         this.updates.push(viewUpdate);
@@ -29,11 +43,23 @@ class SocketListener {
 
 class ViewUpdate {
     static updates: ViewUpdateWrapper[] = [];
+
     constructor(
-        public readonly page: string,
+        public readonly event: string,
+        public readonly page: string|null,
         public readonly callback: (...args: any[]) => void,
         public readonly filter?: (...args: any[]) => boolean
-    ) {} 
+    ) {}
+
+    destroy() {
+        const listener = SocketWrapper.listeners[this.event];
+        if (!listener) return console.error(`Event ${this.event} does not exist`);
+
+        const index = listener.updates.indexOf(this);
+        if (index === -1) return console.error(`ViewUpdate ${this.event} does not exist`);
+
+        listener.updates.splice(index, 1);
+    }
 }
 
 class SocketWrapper {
