@@ -15,6 +15,8 @@ class Member {
     public static async getMembers(): Promise<Member[]> {
         if (Object.keys(Member.members).length) return Object.values(Member.members);
 
+
+        
         return ServerRequest.post('/member/get-members')
             .then((members: MemberInfo[]) => members.map(m => new Member(m)));
     };
