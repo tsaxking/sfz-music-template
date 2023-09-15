@@ -22,8 +22,9 @@
                 "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css",
                 "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css",
                 "https://cdn.jsdelivr.net/gh/Eonasdan/tempus-dominus@master/dist/css/tempus-dominus.css",
+                "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.10.111/web/pdf_viewer.min.css",
                 // entire folder
-                "../static/css" // ,
+                "../static/css" 
                 // can do scss
                 // "../static/scss/style.scss"
                 // can also do specific files
@@ -48,6 +49,7 @@
                 "https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js",
                 "https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.min.js",
                 "https://cdnjs.cloudflare.com/ajax/libs/bootstrap-colorpicker/3.2.0/js/bootstrap-colorpicker.min.js",
+                "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.10.111/build/pdf.min.js",
 
                 // ts folders (have their own tsconfig.json)
                 "[ts]../static/js/submodules/canvas",
@@ -57,8 +59,8 @@
                 // all js files in these folders (no ts)
                 "[ts]../static/js/top",
                 "[ts]../static/js/bottom",
-                "[ts]../static/js/business",
-                "../static/js/business/socket.d.ts"
+                "[ts]../static/js/business"
+                // "../static/js/business/socket.d.ts"
 
                 // specific files
             ]
@@ -107,6 +109,8 @@
                 "https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js",
                 "https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.min.js",
                 "https://cdnjs.cloudflare.com/ajax/libs/bootstrap-colorpicker/3.2.0/js/bootstrap-colorpicker.min.js",
+                "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.10.111/build/pdf.min.js",
+                "../static/js/imports",
 
                 // ts folders
                 "[ts]../static/js/submodules/canvas",
@@ -118,7 +122,41 @@
 
                 "[ts]../static/js/dashboards/member",
 
-                "[ts]../static/js/bottom"
+                "[ts]../static/js/bottom",
+                "[ts]../static/js/account"
+
+                // specific files
+            ]
+        },
+        "become-member.js": {
+            "files": [
+                "/socket.io/socket.io.js --ignore-build",
+                "https://code.jquery.com/jquery-3.1.1.min.js",
+                "https://cdn.datatables.net/v/dt/dt-1.11.5/datatables.min.js",
+                "https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.2/dist/umd/popper.min.js",
+                "https://cdn.jsdelivr.net/gh/Eonasdan/tempus-dominus@master/dist/js/tempus-dominus.js",
+                "https://cdnjs.cloudflare.com/ajax/libs/interact.js/1.10.17/interact.min.js",
+                "https://cdn.jsdelivr.net/npm/chart.js",
+                "https://cdn.jsdelivr.net/npm/apexcharts",
+                "https://cdn.jsdelivr.net/npm/chartjs-plugin-trendline@1.0.2/src/chartjs-plugin-trendline.min.js",
+                "https://cdn.jsdelivr.net/npm/tables-js/1.0/tables.min.js",
+
+
+                "https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js",
+                "https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.min.js",
+                "https://cdnjs.cloudflare.com/ajax/libs/bootstrap-colorpicker/3.2.0/js/bootstrap-colorpicker.min.js",
+                "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.10.111/build/pdf.min.js",
+
+                // ts folders
+                "[ts]../static/js/submodules/canvas",
+                "[ts]../static/js/submodules/colors",
+                "[ts]../static/js/submodules/custom-bootstrap/src",
+
+                "[ts]../static/js/classes",
+                "[ts]../static/js/0 - top",
+
+                "[ts]../static/js/become-member",
+                "[ts]../static/js/account"
 
                 // specific files
             ]

@@ -350,5 +350,52 @@
         "status": "error",
         "code": 404,
         "instructions": ""
+    },
+    "files.tooLarge": {
+        "title": "Files",
+        "message": "File too large",
+        "status": "error",
+        "code": 404,
+        "instructions": ""
+    },
+    "file.invalidExtension": {
+        "title": "Files",
+        "message": "Invalid file extension",
+        "status": "error",
+        "code": 404,
+        "instructions": ""
+    },
+    "file.invalidFile": {
+        "title": "Files",
+        "message": "Invalid file",
+        "status": "error",
+        "code": 404,
+        "instructions": ""
+    },
+
+
+
+
+
+
+
+
+    // █▄ ▄█ ██▀ █▄ ▄█ ██▄ ██▀ █▀▄ ▄▀▀ 
+    // █ ▀ █ █▄▄ █ ▀ █ █▄█ █▄▄ █▀▄ ▄█▀ 
+
+    "member.notMember": {
+        "title": "Membership",
+        "message": "You are not a member",
+        "status": "error",
+        "code": 404,
+        "instructions": "You will be redirected to the membership page",
+        "redirect": "/member/become-member"
+    },
+    "member.requested": {
+        "title": "Membership",
+        "message": "Your membership has been requested",
+        "status": "success",
+        "code": 200,
+        "instructions": ""
     }
 }

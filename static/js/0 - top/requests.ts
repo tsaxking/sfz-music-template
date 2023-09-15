@@ -40,12 +40,14 @@ class ServerRequest {
         return this.errors.length;
     }
 
+    static async post(url: string, body?: any, options?: RequestOptions): Promise<any> {
+        const r = new ServerRequest(url, 'post', body, options);
+        return r.send();
+    }
 
 
-
-
-    static async new(url: string, body?: any, options?: RequestOptions): Promise<any> {
-        const r = new ServerRequest(url, body, options);
+    static async get(url: string, options?: RequestOptions): Promise<any> {
+        const r = new ServerRequest(url, 'get', undefined, options);
         return r.send();
     }
 
@@ -106,7 +108,12 @@ class ServerRequest {
                 xhr.onreadystatechange = (e) => {
                     if (xhr.readyState == 4) {
                         try {
-    
+                            // get the response
+                            const response = JSON.parse(xhr.responseText);
+                            if (response.status) {
+                                // this is a notification
+                                ServerRequest.notify(response);
+                            }
                         } catch (e) {
     
                         }
@@ -128,7 +135,8 @@ class ServerRequest {
 
     constructor(
         public readonly url: string,
-        public readonly body: any,
+        public readonly method: 'get' | 'post' = 'post',
+        public readonly body?: any,
         public readonly options?: RequestOptions
     ) {
         ServerRequest.all.push(this);
@@ -157,7 +165,7 @@ class ServerRequest {
 
 
             fetch(this.url, {
-                method: 'POST',
+                method: this.method.toUpperCase(),
                 headers: {
                     'Content-Type': 'application/json',
                     ...this.options?.headers
@@ -170,8 +178,7 @@ class ServerRequest {
 
                     if (data?.status) {
                         // this is a notification
-                        const status = capitalize(fromCamelCase(data.status));
-                        CBS.alert(`${status}: ${data.message}`);
+                        ServerRequest.notify(data);
                     }
 
 
@@ -191,5 +198,19 @@ class ServerRequest {
                     rej(e);
                 });
         });
+    }
+
+    static notify(data: any) {
+        const status = capitalize(fromCamelCase(data.status));
+
+        let message = `${status}: ${data.message}`;
+
+        if(data.data) {
+            for (const [key, value] of Object.entries(data.data)) {
+                message += `\n${key}: ${value}`;
+            }
+        }
+
+        CBS.alert(message);
     }
 }

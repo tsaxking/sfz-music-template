@@ -10,9 +10,12 @@ class AccountEditForm {
         picture: CBS_Input;
         bio: CBS_Input;
         title: CBS_Input;
+    };
+
+    public readonly collections: {
         skills: ProfileListElCollection;
         roles: ProfileListElCollection;
-    };
+    }
 
     public readonly viewUpdates: ViewUpdate[] = [];
 
@@ -40,36 +43,38 @@ class AccountEditForm {
                     type: 'text'
                 }
             }),
-            picture: CBS.createElement('input', {
+            picture: CBS.createElement('input-file', {
                 attributes: {
                     type: 'file'
                 }
             }),
-            bio: CBS.createElement('input', {
+            bio: CBS.createElement('input-textarea', {
                 attributes: {
-                    type: 'text'
+                    rows: '5'
                 }
             }),
             title: CBS.createElement('input', {
                 attributes: {
                     type: 'text'
                 }
-            }),
+            })
+        };
+
+        this.collections = {
             skills: new ProfileListElCollection(),
             roles: new ProfileListElCollection()
         };
 
         for (const [key, input] of Object.entries(this.inputs)) {
-            if (input instanceof ProfileListElCollection) continue; // ignore ProfileListCollections
-
-
-            input.value = this.account[key as keyof Account];
+            if (!(input instanceof CBS_FileInput)) input.value = this.account[key as keyof Account] || '';
             const label = CBS.createElement('label', {
                 attributes: {
                     for: key
                 }
-            }).append(key);
-            const button = CBS.createElement('button').append(CBS_MaterialIcon.fromTemplate('save'));
+            }).append(capitalize(fromCamelCase(key)));
+            const button = CBS.createElement('button', {
+                classes: ['btn-success']
+            }).append(CBS_MaterialIcon.fromTemplate('mi-save'));
 
             const labelRow = this.container.addRow();
             labelRow.addCol().append(label);
@@ -80,6 +85,7 @@ class AccountEditForm {
             inputRow.addCol({
                 sm: 4
             }).append(button);
+            inputRow.marginB = 3;
 
             button.on('click', () => {
                 switch (key) {
@@ -99,10 +105,10 @@ class AccountEditForm {
                         this.account.changePicture(input.value);
                         break;
                     case 'bio':
-                        this.account.changeBio(input.value);
+                        this.account.member?.changeBio(input.value);
                         break;
                     case 'title':
-                        this.account.changeTitle(input.value);
+                        this.account.member?.changeTitle(input.value);
                         break;
                 }
             });
@@ -110,10 +116,120 @@ class AccountEditForm {
 
 
 
-        
+        for (const [key, collection] of Object.entries(this.collections)) {
+            const container = CBS.createElement('container');
+            container.marginB = 3;
+            container.padding = 0;
+            const label = CBS.createElement('p');
+            label.append(capitalize(fromCamelCase(key)));
+            const line = CBS.createElement('hr');
+            container.addRow().addCol({
+                sm: 8
+            }).append(label, line);
+            // container.addRow().addCol().append(line);
+            container.addRow().addCol().append(collection);
+
+            this.container.addRow().addCol().append(container);
+
+            collection.onInput((value: string) => {
+                switch (key) {
+                    // case 'skills':
+                    //     this.account.addSkill(value);
+                    //     break;
+                    case 'roles':
+                        this.account.addRole(value);
+                        break;
+                }
+            });
+        }
 
 
 
+
+
+        this.newUpdate(
+            'change-username',
+            () => this.inputs.username.value = this.account.username
+        );
+
+        this.newUpdate(
+            'change-email',
+            () => this.inputs.email.value = this.account.email
+        );
+
+        this.newUpdate(
+            'change-first-name',
+            () => this.inputs.firstName.value = this.account.firstName
+        );
+
+        this.newUpdate(
+            'change-last-name',
+            () => this.inputs.lastName.value = this.account.lastName
+        );
+
+        this.newUpdate(
+            'change-picture',
+            () => this.inputs.picture.value = this.account.picture
+        );
+
+        this.newUpdate(
+            'change-bio',
+            () => this.inputs.bio.value = this.account.member?.bio
+        );
+
+        this.newUpdate(
+            'change-title',
+            () => this.inputs.title.value = this.account.member?.title
+        );
+
+        this.newUpdate(
+            'add-skill',
+            (skill: string) => {
+                const { member } = this.account;
+                const el = this.collections.skills.addListElement(skill);
+                el.subcomponents.button.on('click', () => {
+                    this.account.member?.removeSkill(skill);
+                });
+            }
+        );
+
+        this.newUpdate(
+            'add-role',
+            () => {
+                const { roles } = this.account;
+                const role = roles[roles.length - 1];
+                const el = this.collections.roles.addListElement(role);
+                el.subcomponents.button.on('click', () => {
+                    this.account.removeRole(role);
+                });
+            }
+        );
+
+        this.newUpdate(
+            'remove-skill',
+            (skill: string) => {
+                const { member } = this.account;
+
+                member?.skills.splice(member.skills.indexOf(skill), 1);
+                const el = this.collections.skills.collection[skill];
+                if (!el) return;
+
+                el.destroy();
+            }
+        );
+
+        this.newUpdate(
+            'remove-role',
+            () => {
+                const { roles } = this.account;
+
+                const role = roles[roles.length - 1];
+                const el = this.collections.roles.collection[role];
+                if (!el) return;
+
+                el.destroy();
+            }
+        );
     }
 
     private newUpdate(name: string, callback: (...args: any[]) => void) {
@@ -150,7 +266,8 @@ class ProfileListEl extends CBS_Component {
         this.addClass(
             'd-flex',
             'justify-content-between',
-            'align-items-center'
+            'align-items-center',
+            'list-group-item'
         );
 
         this.subcomponents.button.setAttribute('aria-label', 'close');
@@ -171,13 +288,14 @@ class ProfileListElInput extends CBS_Component {
         }),
         button: new CBS_Button({
             classes: ['btn-success']
-        }).append(CBS_MaterialIcon.fromTemplate('add'))
+        }).append(CBS_MaterialIcon.fromTemplate('mi-add'))
     }
 
     constructor(options?: CBS_Options) {
         super(options);
 
         this.el = document.createElement('li');
+        this.addClass('list-group-item');
         const container = CBS.createElement('container');
         const row = container.addRow();
         row.addCol({
@@ -205,12 +323,13 @@ class ProfileListElCollection extends CBS_Component {
         super(options);
 
         this.el = document.createElement('ul');
+        // this.addClass('list-group');
         this.append(this.subcomponents.input);
     }
 
 
     addListElement(label: string) {
-        const el = ProfileListEl.create(label)
+        const el = ProfileListEl.create(label);
         this.append(el);
         this.collection[label] = el;
         return el;
@@ -225,7 +344,9 @@ class ProfileListElCollection extends CBS_Component {
 
 
 class Account {
-    static accounts: Account[] = [];
+    static accounts: {
+        [username: string]: Account;
+    } = {};
     private static _current: Account;
     private static _accountSet: AccountChangeFn[] = [];
 
@@ -246,10 +367,10 @@ class Account {
 
     static async all(refresh?: boolean): Promise<Account[]> {
         if (!refresh && Account.accounts.length) {
-            return Account.accounts;
+            return Object.values(Account.accounts);
         }
 
-        const accounts = await ServerRequest.new('/account/all', null, { cached: !!refresh })
+        const accounts = await ServerRequest.post('/account/all', null, { cached: !!refresh })
             .then((accounts: any[]) => accounts.map(a => new Account(
                 a.username,
                 a.email,
@@ -260,10 +381,18 @@ class Account {
                 a.roles
             )));
 
-        Account.accounts = accounts;
+        Account.accounts = accounts.reduce((acc, a) => {
+            acc[a.username] = a;
+            return acc;
+        }, {} as { [username: string]: Account });
 
         return accounts;
     }
+
+
+    public readonly member?: Member;
+
+
 
     constructor(
         public username: string,
@@ -271,16 +400,28 @@ class Account {
         public firstName: string,
         public lastName: string,
         public picture: string,
-        public readonly memberInfo: {
+        public roles: string[],
+        memberInfo?: {
             bio: string;
             title: string;
             skills: string[];
-        },
-        public roles: string[]
-    ) {
-        if (!Account.accounts.find(a => a.username == username)) {
-            Account.accounts.push(this);
+            resume: string|null;
+            status: MembershipStatus;
         }
+    ) {
+        if (!Account.accounts[this.username]) {
+            Account.accounts[this.username] = this;
+        }
+
+        if (memberInfo) {
+            this.member = new Member(
+                {
+                    ...memberInfo,
+                    username: this.username
+                }
+            );
+        }
+
     }
 
     manageModal() {
@@ -297,6 +438,15 @@ class Account {
         const editForm = this.editForm();
 
         tabNav.addPage('Edit', editForm.container);
+
+
+
+
+
+        const modal = CBS.createElement('modal');
+        modal.on('hidden.bs.modal', () => {
+            editForm.destroy();
+        });
     }
 
     editForm(): AccountEditForm {
@@ -307,7 +457,7 @@ class Account {
 
 
     async changeUsername(username: string) {
-        return ServerRequest.new('/account/change-username', {
+        return ServerRequest.post('/account/change-username', {
             username: this.username,
             newUsername: username
         });
@@ -318,65 +468,37 @@ class Account {
     }
 
     async changeFirstName(firstName: string) {
-        return ServerRequest.new('/account/change-name', {
+        return ServerRequest.post('/account/change-name', {
             username: this.username,
             firstName
         });
     }
 
     async changeLastName(lastName: string) {
-        return ServerRequest.new('/account/change-name', {
+        return ServerRequest.post('/account/change-name', {
             username: this.username,
             lastName
         });
     }
 
     async changeEmail(email: string) {
-        return ServerRequest.new('/account/change-email', {
+        return ServerRequest.post('/account/change-email', {
             username: this.username,
             email
         });
     }
 
     async addRole(role: string) {
-        return ServerRequest.new('/account/add-role', {
+        return ServerRequest.post('/account/add-role', {
             username: this.username,
             role
         });
     }
 
     async removeRole(role: string) {
-        return ServerRequest.new('/account/remove-role', {
+        return ServerRequest.post('/account/remove-role', {
             username: this.username,
             role
-        });
-    }
-
-    async changeBio(bio: string) {
-        return ServerRequest.new('/account/change-bio', {
-            username: this.username,
-            bio
-        });
-    }
-
-    async changeTitle(title: string) {
-        return ServerRequest.new('/account/change-title', {
-            username: this.username,
-            title
-        });
-    }
-
-    async addSkill(skill: string) {
-        return ServerRequest.new('/account/add-skill', {
-            username: this.username,
-            skill
-        });
-    }
-
-    async removeSkill(skill: string) {
-        return ServerRequest.new('/account/remove-skill', {
-            username: this.username,
-            skill
         });
     }
 

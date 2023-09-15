@@ -138,6 +138,12 @@
                 "edit": true,
                 "description": "Resume of the member (in uploads folder)",
                 "init": "resume TEXT"
+            },
+            "status": {
+                "type": "number",
+                "edit": true,
+                "description": "Whether the member is verified",
+                "init": "verified INTEGER NOT NULL"
             }
         }
     },
@@ -203,12 +209,17 @@
         },
         "rows": [{
             "name": "admin",
-            "permissions": [],
+            "permissions": [
+                "mangeMembers",
+                "manageBoard"
+            ],
             "description": "Administrator",
             "rank": 0
         }, {
             "name": "board",
-            "permissions": [],
+            "permissions": [
+                "mangeMembers"
+            ],
             "description": "Board",
             "rank": 20
         }, {

@@ -2,7 +2,7 @@ import { NextFunction, Response, Router } from 'express';
 import { ColorCode, Status } from '../structure/status';
 import Role from '../structure/roles';
 import Account, { AccountDynamicProperty } from '../structure/accounts';
-import { getTemplate } from '../files';
+import { fileStream, getTemplate } from '../files';
 import { Session } from '../structure/sessions';
 import { Server } from 'socket.io';
 import { SocketWrapper } from '../structure/socket';
@@ -90,6 +90,8 @@ router.post('/sign-in', Account.notSignedIn, async(req, res) => {
 
     req.session.signIn(account);
 
+    console.log('redirecting to: ', req.session.prevUrl);
+
     // adaptable status
     const status = new Status(
         'Account',
@@ -97,7 +99,7 @@ router.post('/sign-in', Account.notSignedIn, async(req, res) => {
         ColorCode.success,
         200,
         'You have been logged in, redirecting...',
-        req.session.prevUrl || '/',
+        req.session.prevUrl || '/home',
         req,
         JSON.stringify({ username: username })
     );
@@ -384,7 +386,13 @@ router.post('/change-last-name', Account.allowPermissions('editUsers'), async(re
     req.io.emit('change-last-name', username, newLastName);
 });
 
-router.post('/change-picture', Account.allowPermissions('editUsers'), async(req, res) => {
+router.post('/change-picture', fileStream({
+    extensions: [
+        'png',
+        'jpg',
+        'jpeg'
+    ]
+}), async(req, res) => {
     const { body: { username }, file } = req;
     const id = file?.id;
     if (!id) return Status.from('account.invalidPicture', req).send(res);
@@ -397,5 +405,17 @@ router.post('/change-picture', Account.allowPermissions('editUsers'), async(req,
     Status.from('account.' + status, req, { username, picture: id }).send(res);
 });
 
+router.post('/change-bio', Account.allowPermissions('editUsers'), async(req, res) => {
+    const { username, bio } = req.body;
+
+    const account = await Account.fromUsername(username);
+    if (!account) return Status.from('account.notFound', req, { username }).send(res);
+
+    const status = await account.changeBio(bio);
+
+    Status.from('account.' + status, req, { username, bio }).send(res);
+
+    req.io.emit('change-bio', username, bio);
+});
 
 export default router;

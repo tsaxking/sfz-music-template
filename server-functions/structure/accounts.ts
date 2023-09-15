@@ -8,6 +8,7 @@ import { validate } from 'deep-email-validator';
 import { Email, EmailOptions, EmailType } from "./email";
 import { config } from 'dotenv';
 import Filter from 'bad-words';
+import { MembershipProgress } from "./member";
 
 
 config();
@@ -87,7 +88,12 @@ export enum AccountStatus {
     passwordChangeSuccess = 'passwordChangeSuccess',  
     passwordChangeInvalid = 'passwordChangeInvalid',
     passwordChangeExpired = 'passwordChangeExpired',
-    passwordChangeUsed = 'passwordChangeUsed'
+    passwordChangeUsed = 'passwordChangeUsed',
+
+
+
+    invalidBio = 'invalidBio',
+    invalidTitle = 'invalidTitle',
 }
 
 export enum AccountDynamicProperty {
@@ -300,7 +306,7 @@ export default class Account {
             .toString('hex');
     }
 
-    static valid(str: string): boolean {
+    static valid(str: string, chars: string[] = []): boolean {
         const allowedCharacters = [
             'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l',
             'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x',
@@ -309,6 +315,8 @@ export default class Account {
             '+', '=', '{', '}', '[', ']', ':', ';', '"', "'", '<', '>',
             '?', '/', '|', ',', '.', '~', '`'
         ];
+
+        allowedCharacters.push(...chars);
 
         const invalidChars:string[] = [];
 
@@ -320,6 +328,8 @@ export default class Account {
                 if (!validChar) invalidChars.push(char);
                 return validChar;
             });
+
+        if (!valid) console.log('Invalid characters:', invalidChars);
     
 
         // test for bad words
@@ -559,6 +569,7 @@ export default class Account {
         bio: string;
         title: string;
         resume: string|null;
+        status: MembershipProgress
     }> {
         const query = `
             SELECT * FROM MemberInfo
@@ -571,7 +582,8 @@ export default class Account {
             skills: await this.getSkills(),
             bio: result?.bio || '',
             title: result?.title || '',
-            resume: result?.resume || null
+            resume: result?.resume || null,
+            status: result?.status || MembershipProgress.pending
         };
     }
 
@@ -841,5 +853,36 @@ export default class Account {
         this.passwordChange = null;
 
         return AccountStatus.passwordChangeSuccess;
+    }
+
+
+
+    async changeBio(bio: string) {
+        if (!Account.valid(bio, [' '])) return AccountStatus.invalidBio;
+
+        const query = `
+            UPDATE MemberInfo
+            SET bio = ?
+            WHERE username = ?
+        `;
+
+        await MAIN.run(query, [bio, this.username]);
+
+        return AccountStatus.success;
+    }
+
+
+    async changeTitle(title: string) {
+        if (!Account.valid(title, [' '])) return AccountStatus.invalidTitle;
+
+        const query = `
+            UPDATE MemberInfo
+            SET title = ?
+            WHERE username = ?
+        `;
+
+        await MAIN.run(query, [title, this.username]);
+
+        return AccountStatus.success;
     }
 };

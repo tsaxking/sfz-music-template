@@ -1,5 +1,5 @@
 ServerRequest
-    .new('/account/my-account')
+    .post('/account/my-account')
     .then(({ 
         username,
         email,
@@ -18,7 +18,7 @@ ServerRequest
 
 socket.on('change-username',
     (from: string, to: string) => {
-        const a = Account.accounts.find(a => a.username === from);
+        const a = Account.accounts[from];
         if (!a) return;
         a.username = to;
     }
@@ -26,7 +26,7 @@ socket.on('change-username',
 
 socket.on('change-email',
     (username: string, to: string) => {
-        const a = Account.accounts.find(a => a.username === username);
+        const a = Account.accounts[username];
         if (!a) return;
         a.email = to;
     }
@@ -34,7 +34,7 @@ socket.on('change-email',
 
 socket.on('change-first-name',
     (username: string, to: string) => {
-        const a = Account.accounts.find(a => a.username === username);
+        const a = Account.accounts[username];
         if (!a) return;
         a.firstName = to;
     }
@@ -42,7 +42,7 @@ socket.on('change-first-name',
 
 socket.on('change-last-name',
     (username: string, to: string) => {
-        const a = Account.accounts.find(a => a.username === username);
+        const a = Account.accounts[username];
         if (!a) return;
         a.lastName = to;
     }
@@ -50,7 +50,7 @@ socket.on('change-last-name',
 
 socket.on('change-picture',
     (username: string, to: string) => {
-        const a = Account.accounts.find(a => a.username === username);
+        const a = Account.accounts[username];
         if (!a) return;
         a.picture = to;
     }
@@ -58,15 +58,15 @@ socket.on('change-picture',
 
 socket.on('add-skill',
     (username: string, skill: string) => {
-        const a = Account.accounts.find(a => a.username === username);
+        const a = Account.accounts[username];
         if (!a) return;
-        a.memberInfo.skills.push(skill);
+        a.member?.skills.push(skill);
     }
 );
 
 socket.on('add-role',
     (username: string, role: string) => {
-        const a = Account.accounts.find(a => a.username === username);
+        const a = Account.accounts[username];
         if (!a) return;
         a.roles.push(role);
     }
@@ -74,15 +74,15 @@ socket.on('add-role',
 
 socket.on('remove-skill',
     (username: string, skill: string) => {
-        const a = Account.accounts.find(a => a.username === username);
+        const a = Account.accounts[username];
         if (!a) return;
-        a.memberInfo.skills.splice(a.memberInfo.skills.indexOf(skill), 1);
+        a.member?.skills.splice(a.member.skills.indexOf(skill), 1);
     }
 );
 
 socket.on('remove-role',
     (username: string, role: string) => {
-        const a = Account.accounts.find(a => a.username === username);
+        const a = Account.accounts[username];
         if (!a) return;
         a.roles.splice(a.roles.indexOf(role), 1);
     }
@@ -101,7 +101,7 @@ socket.on('new-account', (a) => {
 });
 
 socket.on('remove-account', (username: string) => {
-    const a = Account.accounts.find(a => a.username === username);
+    const a = Account.accounts[username];
     if (!a) return;
-    Account.accounts = Account.accounts.filter(a => a.username !== username);
+    delete Account.accounts[username];
 });

@@ -1,3 +1,4 @@
+// used for changing text color in console
 enum Colors {
     Reset = '\x1b[0m',
     Bright = '\x1b[1m',
@@ -25,7 +26,7 @@ enum Colors {
 }
 
 
-
+// [Main.ts] Logging
 const log = (...args: any[]) => {
     console.log(Colors.FgMagenta, '[Main.ts]', Colors.Reset, ...args);
 };
@@ -40,6 +41,7 @@ const __arguments = process.argv.slice(2);
 log('Arguments:', __arguments.map(a => Colors.FgGreen + a + Colors.Reset).join(' '));
 let [env, ...args] = __arguments;
 
+
 type Mode = {
     type: string;
     description: string;
@@ -48,61 +50,6 @@ type Mode = {
 }
 
 
-const modes: {
-    [key: string]: Mode;
-} = {
-    dev: {
-        type: 'development',
-        description: 'In dev mode, only ts is rendered. This is the mode you should use when debugging and writing code.',
-        command: 'npm test',
-        quickInfo: [
-            `Static Files are ${Colors.FgRed}not${Colors.Reset} combined or minified`,
-            `Debugging is ${Colors.FgGreen}easier${Colors.Reset}`,
-            `Uploads are ${Colors.FgRed}slower${Colors.Reset}`,
-            `Browser window is ${Colors.FgGreen}spawned${Colors.Reset}`
-        ]
-    },
-    test: {
-        type: 'testing',
-        description: 'This environment is similar to the production environment, but it will still auto login and spawn a browser window.',
-        command: 'npm run dev',
-        quickInfo: [
-            `Static Files are ${Colors.FgGreen}combined${Colors.Reset} but not ${Colors.FgRed}minified${Colors.Reset}`,
-            `Debugging is ${Colors.FgRed}more difficult${Colors.Reset}`,
-            `Uploads are ${Colors.FgGreen}faster${Colors.Reset}`,
-            `Browser window is ${Colors.FgGreen}spawned${Colors.Reset}`
-        ]
-    },
-    prod: {
-        type: 'production',
-        description: `In production, the idea is everything is more optimized. (This is a work in progress).`,
-        command: 'npm start',
-        quickInfo: [
-            `Static Files are ${Colors.FgGreen}combined${Colors.Reset} and ${Colors.FgGreen}minified${Colors.Reset}`,
-            `Debugging is ${Colors.FgRed}more difficult${Colors.Reset}`,
-            `Uploads are ${Colors.FgGreen}faster${Colors.Reset}`,
-            `Browser window is ${Colors.FgRed}not spawned${Colors.Reset}`
-        ]
-    }
-}
-console.clear();
-console.log('Starting in', env, 'mode...');
-
-if (process.argv[2] == 'help') {
-    log('Hello! Welcome to the help menu, please read the following information carefully.');
-    log('Available modes:');
-    // in red
-    log(Colors.FgGreen + 'all modes run "npm i" && "db-updates.js"' + Colors.Reset);
-    for (const mode in modes) {
-        // log in colors (type = purple) (command = yellow) (description = white)
-
-        log(Colors.FgMagenta, modes[mode].type, Colors.Reset, ':', Colors.FgYellow, `(${modes[mode].command})`, Colors.Reset, '-', modes[mode].description);
-        log(modes[mode].quickInfo.map(i => `    ${Colors.BgCyan}-${Colors.Reset} ` + i).join('\n'));
-    }
-}
-log(`Currently, you are running in ${Colors.FgMagenta}${modes[process.argv[2]].type} mode.`, Colors.Reset);
-log(modes[process.argv[2]].quickInfo.map(i => `    ${Colors.BgCyan}-${Colors.Reset} ` + i).join('\n'));
-log('Please run "npm run help" to see all the modes available.');
 
 
 
@@ -116,44 +63,18 @@ import * as os from 'os';
 import { config } from 'dotenv';
 import { buildServerFunctions, doBuild, onFileChange, stopWorkers, watchIgnoreDirs, watchIgnoreList, renderedBuilds } from './build/build';
 import * as chokidar from 'chokidar';
+import setTitle from 'node-bash-title';
+
+setTitle('Starting...');
 
 config();
 
-
-
-const fromTsDir = async (dirPath: string): Promise<void> => {
-    return new Promise(async (res, rej) => {
-        try {
-            // log('Runnint tsc: ', dirPath);
-            const child = spawn('tsc', [], {
-                stdio: 'pipe',
-                shell: true,
-                cwd: dirPath,
-                env: process.env
-            });
-
-            child.on('error', error);
-            child.stdout.on('data', (data) => {
-                log(data.toString());
-            });
-
-            child.stderr.on('data', (data) => {
-                error(data.toString());
-            });
-
-            child.on('close', () => {   
-                res();
-            });
-        } catch { 
-            res();
-        }
-    });
-}
 
 let server: Worker;
 
 const newServer = async () => {
     try {
+        setTitle(`🎷 [${env}] sfzMusic Server`);
         console.log('---------------------------------------------');
         log('Starting server...');
         log('Run "dev", "test", or "prod" to change modes');
@@ -161,7 +82,7 @@ const newServer = async () => {
         log('Listening for .ts and .json file changes...');
         console.log('---------------------------------------------');
 
-        if (server) server.terminate();
+        if (server) await server.terminate();
         await Promise.all([
             runTs('./server.ts')
         ]);
@@ -177,15 +98,18 @@ const newServer = async () => {
         server.on('error', (err) => {
             // log('Server error:', err);
             log(Colors.FgRed, 'Server error:', err, Colors.Reset);
-            log(Colors.FgBlue, 'Please fix the error and restart');
+            log(Colors.FgBlue, 'Please fix the error and restart', Colors.Reset);
             // server.terminate();
         });
     } catch (err) {}
 }
 
+// build server functions and restarts the server
 const build = async() => {
-    if (server) server.terminate();
-    stopWorkers(); // kills all current build workers
+    setTitle('Building...');
+
+    if (server) await server.terminate();
+    await stopWorkers(); // kills all current build workers
     const start = Date.now();
 
     await Promise.all([
@@ -198,9 +122,14 @@ const build = async() => {
     startWatchProgram();
 };
 
-let buildTimeout: NodeJS.Timeout | undefined;
-let watchStarted = false;
+
+// if multiple files are saved during the build process, it will build multiple times, but it will only restart the server once
+// the build buffer is used to keep track of how many rebuilds are currently running
+let buildBuffer: Promise<any>[] = [];
+let watchStarted: boolean = false;
 const startWatchProgram = () => {
+    if (args.includes('no-watch')) return;
+
     if (watchStarted) return;
     watchStarted = true;
     const watcher = chokidar.watch(path.resolve(__dirname, '.'), {
@@ -220,20 +149,31 @@ const startWatchProgram = () => {
         if (!filename) return;
         const validExts = [
             '.ts',
-            '.json'
+            '.json',
+            '.css',
+            '.scss',
+            '.sass'
         ];
 
         if (!validExts.includes(path.extname(filename))) return;
 
         log('File changed:', filename);
-        
-        // in case of multiple changes, only build once
-        if (buildTimeout) clearTimeout(buildTimeout);
-        buildTimeout = setTimeout(() => {
-            onFileChange(filename, env)
-                .then(newServer)
-                .catch(error);
-        }, 1000);
+
+        const promise = onFileChange(filename, env);
+
+        // the buffer will fill with promises which could fill up the cache, but this shouldn't impact performance much
+        buildBuffer.push(promise);
+
+        // once all builds are completed, restart the server
+        if (buildBuffer.length > 1) return;
+        Promise.all(buildBuffer).then(() => {
+            // should the buffer clear?
+
+            buildBuffer = [];
+
+            log('Build complete');
+            newServer();
+        }).catch(error);
     };
 
     watcher.on('change', onChange);
@@ -243,8 +183,10 @@ const startWatchProgram = () => {
     watcher.on('addDir', onChange);
 };
 
-
+// used for updating the database and other things
+// runs ./build/server-update.ts
 const update = async (): Promise<Worker> => {
+    setTitle('Updating...');
     return new Promise((res, rej) => {
         const update = new Worker(path.resolve(__dirname, 'build', 'server-update.js'), {
             workerData: {
@@ -275,7 +217,7 @@ const update = async (): Promise<Worker> => {
     });
 };
 
-
+// build ts files
 const runTs = async (fileName: string): Promise<void> => {
     const program = ts.createProgram([fileName], {
         target: ts.ScriptTarget.ES2022,
@@ -309,6 +251,25 @@ const runTs = async (fileName: string): Promise<void> => {
     return;
 }
 
+
+
+const exit = async (data?: any) => {
+    log('Exiting...');
+    log('Data:', data);
+    if (server) await server.terminate();
+    await stopWorkers();
+
+    process.exit(0);
+};
+
+process.on('exit', exit);
+process.on('SIGINT', exit);
+process.on('SIGTERM', exit);
+process.on('SIGUSR1', exit);
+process.on('SIGUSR2', exit);
+process.on('uncaughtException', exit);
+process.on('unhandledRejection', exit);
+
 (async() => {
     if (isMainThread) {
         await Promise.all([
@@ -317,16 +278,90 @@ const runTs = async (fileName: string): Promise<void> => {
             runTs('./build/run-ts.ts')
         ]);
 
+        // this currently does not work
+        switch (env) {
+            case 'update-only':
+                await update();
+                process.exit(0);
+            case 'build-only':
+                await doBuild(env);
+                process.exit(0);
+        }
 
-        if (!args.includes('skip-updates')) await update();
-        if (!args.includes('skip-build')) build();
+
+        // VVVVVVVVVVVVVVVVVVVVVVVVV
+        // these are for instructions
+
+        const modes: {
+            [key: string]: Mode;
+        } = {
+            dev: {
+                type: 'development',
+                description: 'In dev mode, only ts is rendered. This is the mode you should use when debugging and writing code.',
+                command: 'npm run dev',
+                quickInfo: [
+                    `Static Files are ${Colors.FgRed}not${Colors.Reset} combined or minified`,
+                    `Debugging is ${Colors.FgGreen}easier${Colors.Reset}`,
+                    `Uploads are ${Colors.FgRed}slower${Colors.Reset}`,
+                    `Browser window is ${Colors.FgGreen}spawned${Colors.Reset}`
+                ]
+            },
+            test: {
+                type: 'testing',
+                description: 'This environment is similar to the production environment, but it will still auto login and spawn a browser window.',
+                command: 'npm test',
+                quickInfo: [
+                    `Static Files are ${Colors.FgGreen}combined${Colors.Reset} but not ${Colors.FgRed}minified${Colors.Reset}`,
+                    `Debugging is ${Colors.FgRed}more difficult${Colors.Reset}`,
+                    `Uploads are ${Colors.FgGreen}faster${Colors.Reset}`,
+                    `Browser window is ${Colors.FgGreen}spawned${Colors.Reset}`
+                ]
+            },
+            prod: {
+                type: 'production',
+                description: `In production, the idea is everything is more optimized. (This is a work in progress).`,
+                command: 'npm start',
+                quickInfo: [
+                    `Static Files are ${Colors.FgGreen}combined${Colors.Reset} and ${Colors.FgGreen}minified${Colors.Reset}`,
+                    `Debugging is ${Colors.FgRed}more difficult${Colors.Reset}`,
+                    `Uploads are ${Colors.FgGreen}faster${Colors.Reset}`,
+                    `Browser window is ${Colors.FgRed}not spawned${Colors.Reset}`
+                ]
+            }
+        }
+        console.clear();
+        console.log('Starting in', env, 'mode...');
+        
+        if (process.argv[2] == 'help') {
+            log('Hello! Welcome to the help menu, please read the following information carefully.');
+            log('Available modes:');
+            // in red
+            log(Colors.FgGreen + 'all modes run "npm i" && "db-updates.js"' + Colors.Reset);
+            for (const mode in modes) {
+                // log in colors (type = purple) (command = yellow) (description = white)
+        
+                log(Colors.FgMagenta, modes[mode].type, Colors.Reset, ':', Colors.FgYellow, `(${modes[mode].command})`, Colors.Reset, '-', modes[mode].description);
+                log(modes[mode].quickInfo.map(i => `    ${Colors.BgCyan}-${Colors.Reset} ` + i).join('\n'));
+            }
+        }
+        log(`Currently, you are running in ${Colors.FgMagenta}${modes[process.argv[2]].type} mode.`, Colors.Reset);
+        log(modes[process.argv[2]].quickInfo.map(i => `    ${Colors.BgCyan}-${Colors.Reset} ` + i).join('\n'));
+        log('Please run "npm run help" to see all the modes available.');
+
+
+        // ^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+        if (!args.includes('skip-updates') && !args.includes('skip-update')) await update();
+        if (args.includes('skip-build')) await newServer().then(startWatchProgram);
+        else await build();
 
         if (env !== 'prod') {
             const url = 'http://localhost:' + process.env.PORT;
             // get operating system
             const platform = os.platform();
 
-            if (!args.includes('--no-browser')) {
+            if (!args.includes('no-browser')) {
                 switch (platform) {
                     case 'win32':
                         // windows
@@ -362,41 +397,120 @@ const runTs = async (fileName: string): Promise<void> => {
             }
         }
 
-        process.stdin.on('data', (data) => {
-            switch(data.toString().trim()) {
-                case 'update':
-                    server.terminate();
-                    update(); // forces full update
-                    newServer();
-                    break;
-                case 'build':
-                    build(); // forces full rebuild
-                    break;
-                case 'exit':
-                    process.exit(0);
-                case 'rs':
-                    server.terminate();
-                    newServer();
-                    break;
 
-                case 'prod':
-                    console.log('Switching to production mode...');
-                    // switch to prod mode
+
+
+
+
+
+
+        // Commands
+
+        type Command = {
+            description: string;
+            fn: (...args: string[]) => void;
+        }
+
+        const commands: {
+            [key: string]: Command;
+        } = {
+            update: {
+                description: 'Updates the database and other things',
+                fn: async () => {
+                    await server.terminate();
+                    await update();
+                    newServer();
+                }
+            },
+            build: {
+                description: 'Forces a full rebuild of the project',
+                fn: build
+            },
+            exit: {
+                description: 'Exits the process',
+                fn: exit
+            },
+            rs: {
+                description: 'Restarts the server',
+                fn: newServer
+            },
+            prod: {
+                description: 'Switches to production mode',
+                fn: () => {
                     env = 'prod';
                     newServer();
-                    break;
-                case 'dev':
-                    console.log('Switching to development mode...');
+                }
+            },
+            dev: {
+                description: 'Switches to development mode',
+                fn: () => {
                     env = 'dev';
                     newServer();
-                    // switch to dev mode
-                    break;
-                case 'test':
-                    console.log('Switching to testing mode...');
+                }
+            },
+            test: {
+                description: 'Switches to testing mode',
+                fn: () => {
                     env = 'test';
                     newServer();
-                    // switch to test mode
-                    break;
+                }
+            }, 
+            help: {
+                description: 'Shows this help menu',
+                fn: () => {}
+            },
+            script: {
+                description: 'Runs a script from the ./scripts directory. Example: "script test"',
+                fn: async (script: string) => {
+                    log("Running script:", script);
+
+                    await new Promise((res, rej) => {
+
+                        const child = spawn('npm run script ' + script, {
+                            cwd: __dirname,
+                            env: process.env,
+                            stdio: 'pipe',
+                            shell: true
+                        });
+
+                        const childLog = (data: string) => console.log(Colors.FgCyan, '[Script]', Colors.Reset, data.toString().trim());
+
+                        child.stdout.on('data', childLog);
+                        child.stderr.on('data', childLog);
+
+                        child.on('close', res);
+                        child.on('error', rej);
+                        child.on('exit', res);
+                        child.on('disconnect', res);
+                        child.on('message', childLog);
+                    });
+
+                    log('Script complete');
+                }
+            }
+        }
+
+        const help = () => {
+            const max = Math.max(...Object.keys(commands).map(c => c.length));
+
+            for (const [command, info] of Object.entries(commands)) {
+                log((command + ' ').padEnd(max + 3, '-'),  info.description);
+            }
+        }
+
+        help();
+
+
+        // for running commands
+        process.stdin.on('data', async (data) => {
+            const str = data.toString().trim();
+
+            if (str == 'help') return help();
+
+            const [command, ...args] = str.split(' ');
+
+            if (commands[command]) {
+                commands[command].fn(...args);
             }
         });
     }

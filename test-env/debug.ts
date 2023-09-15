@@ -3,6 +3,84 @@ import { LogType, log, getJSON } from '../server-functions/files';
 import * as fs from 'fs';
 import * as path from 'path';
 import ts from 'typescript';
+import { spawn } from 'child_process';
+
+
+
+const runTsDir = async (dirPath: string): Promise<void> => {
+    return new Promise(async (res, rej) => {
+        try {
+            // log('Runnint tsc: ', dirPath);
+            const child = spawn('tsc', [], {
+                stdio: 'pipe',
+                shell: true,
+                cwd: dirPath,
+                env: process.env
+            });
+
+            // child.on('error', console.error);
+            // child.stdout.on('data', (data) => {
+            //     console.log(data.toString());
+            // });
+
+            // child.stderr.on('data', (data) => {
+            //     console.error(data.toString());
+            // });
+
+            child.on('close', () => {   
+                res();
+            });
+        } catch { 
+            res();
+        }
+    });
+}
+
+const build = async () => {
+    const runTs = async (fileName: string): Promise<void> => {
+        const program = ts.createProgram([fileName], {
+            target: ts.ScriptTarget.ES2022,
+            module: ts.ModuleKind.CommonJS,
+            allowJs: true,
+            checkJs: false,
+            forceConsistentCasingInFileNames: true,
+            esModuleInterop: true,
+            skipLibCheck: true
+        });
+        const emitResult = program.emit();
+    
+        // const allDiagnostics = ts.getPreEmitDiagnostics(program).concat(emitResult.diagnostics);
+    
+        // allDiagnostics.forEach(diagnostic => {
+        //     if (diagnostic.file) {
+        //         const { line, character } = diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start!);
+        //         const message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n');
+        //         console.log(`${diagnostic.file.fileName} (${line + 1},${character + 1}): ${message}`);
+        //     } else {
+        //         console.log(ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'));
+        //     }
+        // });
+    
+        const exitCode = emitResult.emitSkipped ? 1 : 0;
+    
+        // if (exitCode !== 0) {
+        //     console.error(new Error('There was an error compiling the project'));
+        // }
+    
+        return;
+    }
+
+
+
+
+    await Promise.all([
+        runTs(path.resolve(__dirname, '../main.ts')),
+        runTs(path.resolve(__dirname, '../server.ts')),
+        runTs(path.resolve(__dirname, '../build/build.ts')),
+        runTsDir(path.resolve(__dirname, '../server-functions/')),
+        runTsDir(path.resolve(__dirname, '../scripts'))
+    ]);
+};
 
 
 
@@ -77,7 +155,7 @@ const runTest = async(test: Test, db: DB) => {
 }
 
 const run = async(tests: Test[], db: DB) => {
-    console.clear();
+    // console.clear();
     const cols = process.stdout.columns;
 
     let numPassed = 0;
@@ -165,40 +243,6 @@ const run = async(tests: Test[], db: DB) => {
 
 
 
-const runTs = async (filePath: string): Promise<any> => {
-    return new Promise(async (res, rej) => {
-        const tsConfig = await getJSON(path.resolve(__dirname, filePath, './tsconfig.json'));
-
-        const program = ts.createProgram([filePath], {
-            ...tsConfig.compilerOptions,
-            noEmitOnError: true
-        });
-        const emitResult = program.emit();
-    
-        const allDiagnostics = ts.getPreEmitDiagnostics(program).concat(emitResult.diagnostics);
-    
-        allDiagnostics.forEach(diagnostic => {
-            if (diagnostic.file) {
-                const { line, character } = diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start!);
-                const message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n');
-                console.log(`${diagnostic.file.fileName} (${line + 1},${character + 1}): ${message}`);
-            } else {
-                console.log(ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'));
-            }
-        });
-    
-        const exitCode = emitResult.emitSkipped ? 1 : 0;
-    
-        if (exitCode !== 0) {
-            console.error(new Error('There was an error compiling the project'));
-        }
-
-        res(null);
-    });
-}
-
-
-
 
 
 
@@ -217,17 +261,18 @@ const runTs = async (filePath: string): Promise<any> => {
 
     const db = new DB('debug');
 
-    await runTs(path.resolve(__dirname, './tests/'));
-
-
+    await Promise.all([
+        build(),
+        runTsDir(path.resolve(__dirname, './tests/'))
+    ]);
 
     const tests = fs.readdirSync(path.resolve(__dirname, './tests')).map(file => {
         if (file.endsWith('.js')) {
             file = file.replace('.js', '');
             console.log('Imported test:', file);
-            return require('./tests' + file);
+            return require('./tests/' + file).default;
         }
-    });
+    }).filter(Boolean);
 
 
 
@@ -239,13 +284,13 @@ const runTs = async (filePath: string): Promise<any> => {
     //         return (num as unknown as string) + str;
     //     }
 
-    //     return {
-    //         name: `Test ${i}`,
-    //         expect: generateRandom(),
-    //         test: async(db: DB) => {
+    //     return new Test(
+    //         `Test ${i}`,
+    //         generateRandom(),
+    //         async () => {
     //             return generateRandom();
     //         }
-    //     }
+    //     )
     // });
 
     try {
@@ -253,6 +298,7 @@ const runTs = async (filePath: string): Promise<any> => {
         await run(tests, db);
 
     } catch (e) {
+        console.error(e);
         if ((e as Error).toString().includes('Invalid count value')) {
             console.error('Please zoom out of the terminal window, the output is too large to fit on the screen.');
         }

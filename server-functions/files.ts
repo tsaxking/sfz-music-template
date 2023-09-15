@@ -1,4 +1,4 @@
-import { NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import * as fs from 'fs';
 import * as path from 'path';
 import { v4 as uuid } from 'uuid';
@@ -8,6 +8,11 @@ import callsite from 'callsite';
 import { workerData } from 'worker_threads';
 import ObjectsToCsv from 'objects-to-csv';
 import { config } from 'dotenv';
+import { Status } from './structure/status';
+import { Session } from './structure/sessions';
+import { Server } from 'socket.io';
+import { SocketWrapper } from './structure/socket';
+
 
 
 config();
@@ -592,8 +597,9 @@ type CustomResponse = Response & {
  * @returns {(req: any, res: any, next: any) => unknown}
  */
 export const fileStream = (opts?: FileStreamOptions): NextFunction => {
-    const fn = async(req: CustomHeaderRequest, res: CustomResponse, next: NextFunction) => {
+    const fn = async(req: Request, res: Response, next: NextFunction) => {
         let { maxFileSize, extensions } = opts || {};
+        extensions = extensions?.map(e => e.toLowerCase()) || [];
         maxFileSize = maxFileSize || 1000000;
 
         const generateFileId = () => {
@@ -611,14 +617,18 @@ export const fileStream = (opts?: FileStreamOptions): NextFunction => {
             }
         } = req;
 
+        contentType = contentType as string || '';
+        fileName = fileName as string || '';
+        fileSize = fileSize as string || '';
+        fileType = fileType as string || '';
+        fileExt = fileExt as string || '';
+
         if (maxFileSize && +fileSize > maxFileSize) {
             console.log('File size is too large', formatBytes(+fileSize), formatBytes(maxFileSize));
-            return res.json({
-                error: 'File size too large'
-            });
+            return Status.from('files.tooLarge', req).send(res);
         }
 
-        if (extensions && !extensions.includes(fileExt)) {
+        if (extensions && !extensions.includes(fileExt.toLowerCase())) {
             console.log('File type is not allowed', fileExt, extensions);
         }
 
@@ -636,18 +646,18 @@ export const fileStream = (opts?: FileStreamOptions): NextFunction => {
         req.on('data', (chunk) => {
             file.write(chunk);
             total += chunk.length;
-            console.log('Uploaded', formatBytes(total), formatBytes(+fileSize), `(${Math.round(total / +fileSize * 100)}% )`);
+            console.log('Uploaded', formatBytes(total), formatBytes(+(fileSize || '')), `(${Math.round(total / +(fileSize || '') * 100)}% )`);
         });
 
         req.on('end', () => {
             file.end();
             req.file = {
                 id: fileId,
-                name: fileName,
-                size: fileSize,
-                type: fileType,
-                ext: fileExt,
-                contentType,
+                name: fileName as string || '',
+                size: +(fileSize as string) || 0,
+                type: fileType as string || '',
+                ext: fileExt as string || '',
+                contentType: contentType as string || '',
                 filename: fileId + fileExt
             }
             next();

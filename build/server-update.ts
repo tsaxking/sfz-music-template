@@ -4,49 +4,76 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { config } from 'dotenv';
 import ts from 'typescript';
+import { spawn } from 'child_process';
 
-config();
-
-const start = Date.now();
-const args = workerData?.args || process.argv.slice(2);
-console.log('Update args:', args);
-console.log('\x1b[41mThis may take a few seconds, please wait...\x1b[0m');
-
-const runTs = async (filePath: string): Promise<any> => {
-    return new Promise(async (res, rej) => {
-        const tsConfig = await getJSON(path.resolve(__dirname, filePath, './tsconfig.json'));
-
-        const program = ts.createProgram([filePath], {
-            ...tsConfig.compilerOptions,
-            noEmitOnError: true
-        });
-        const emitResult = program.emit();
+enum Colors {
+    Reset = '\x1b[0m',
+    Bright = '\x1b[1m',
+    Dim = '\x1b[2m',
+    Underscore = '\x1b[4m',
+    Blink = '\x1b[5m',
+    Reverse = '\x1b[7m',
+    Hidden = '\x1b[8m',
     
-        const allDiagnostics = ts.getPreEmitDiagnostics(program).concat(emitResult.diagnostics);
-    
-        allDiagnostics.forEach(diagnostic => {
-            if (diagnostic.file) {
-                const { line, character } = diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start!);
-                const message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n');
-                console.log(`${diagnostic.file.fileName} (${line + 1},${character + 1}): ${message}`);
-            } else {
-                console.log(ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'));
-            }
-        });
-    
-        const exitCode = emitResult.emitSkipped ? 1 : 0;
-    
-        if (exitCode !== 0) {
-            console.error(new Error('There was an error compiling the project'));
-        }
+    FgBlack = '\x1b[30m',
+    FgRed = '\x1b[31m',
+    FgGreen = '\x1b[32m',
+    FgYellow = '\x1b[33m',
+    FgBlue = '\x1b[34m',
+    FgMagenta = '\x1b[35m',
+    FgCyan = '\x1b[36m',
 
-        res(null);
-    });
+    BgBlack = '\x1b[40m',
+    BgRed = '\x1b[41m',
+    BgGreen = '\x1b[42m',
+    BgYellow = '\x1b[43m',
+    BgBlue = '\x1b[44m',
+    BgMagenta = '\x1b[45m',
+    BgCyan = '\x1b[46m'
 }
 
 
+const log = (...args: any[]) => {
+    console.log(Colors.FgGreen, '[Server-Update.ts]', Colors.Reset, ...args);
+};
+
+const error = (...args: any[]) => {
+    console.error(Colors.FgRed, '[Server-Update.ts]', Colors.Reset, ...args);
+};
+
+config();
+
+const args = workerData?.args || process.argv.slice(2);
+log('Update args:', args);
+log('\x1b[41mThis may take a few seconds, please wait...\x1b[0m');
+
+const runTs = async (filePath: string): Promise<any> => {
+    return new Promise(async (res, rej) => {
+        const child = spawn('tsc', [], {
+            stdio: 'pipe',
+            shell: true,
+            cwd: filePath,
+            env: process.env
+        });
+
+        child.on('error', error);
+        child.stdout.on('data', (data) => {
+            log(data.toString());
+        });
+
+        child.stderr.on('data', (data) => {
+            error(data.toString());
+        });
+
+        child.on('close', () => {   
+            res(null);
+        });
+    });
+}
+
+// get json file and removes comments
 const getJSON = (file: string): any => {
-    let p;
+    let p: string;
     if (file.includes('/') || file.includes('\\')) {
         p = file;
     }
@@ -65,7 +92,7 @@ const getJSON = (file: string): any => {
         return JSON.parse(content);
     }
     catch (e) {
-        console.error('Error parsing JSON file: ' + file, e);
+        error('Error parsing JSON file: ' + file, e);
         return false;
     }
 }
@@ -93,15 +120,15 @@ if (!fs.existsSync(path.resolve(__dirname, '../history/manifest.txt'))) {
 
 
 
-
+// creates database if it doesn't exist
 export async function initDB() {
-    console.log('Checking to see if database exists...');
+    log('Checking to see if database exists...');
 
     if (fs.existsSync(path.resolve(__dirname, '../db/main.db'))) {
-        return console.log('Database exists! :)');
+        return log('Database exists! :)');
     }
 
-    console.log('Database does not exist, creating...');
+    log('Database does not exist, creating...');
 
     fs.writeFileSync(path.resolve(__dirname, '../db/main.db'), '');
     const db = new DB('main');
@@ -118,10 +145,11 @@ enum TableStatus {
     SUCCESS
 }
 
+// builds tables if they don't exist
 async function tableTest(): Promise<{
     [key: string]: TableStatus
 }[]> {
-    console.log('Checking to see if all tables exist...');
+    log('Checking to see if all tables exist...');
 
     const tables = getJSON('tables');
 
@@ -152,6 +180,7 @@ type Table = {
     description: string;
 }
 
+
 async function createTable(tableName: string, table: Table): Promise<TableStatus> {
     const { columns, rows, description } = table;
     const MAIN = new DB('main');
@@ -167,32 +196,35 @@ async function createTable(tableName: string, table: Table): Promise<TableStatus
 
     if (!columns) return TableStatus.NO_COLUMNS;
 
-    await Promise.all(Object.entries(columns).map(async ([columnName, {init}]) => {
+
+    // ensure all columns exist
+    const pragmaQuery = `
+        PRAGMA table_info("${tableName}");
+    `;
+
+    const pragmaResult = await MAIN.all(pragmaQuery);
+
+    await Promise.all(Object.entries(columns).map(([columnName, {init}]) => {
+        const columnExists = pragmaResult.find(({ name }) => name === columnName);
+        if (columnExists) return TableStatus.EXISTS;
+
+        log(`Column ${columnName} does not exist in table ${tableName}, creating column`);
         const query = `
-            PRAGMA table_info("${tableName}")
-        `;
-
-        const result = await MAIN.all(query);
-
-        if (result.find(({ name }) => name === columnName)) return TableStatus.EXISTS;
-
-
-        console.log(`Column ${columnName} does not exist in table ${tableName}, creating column`);
-        const newColQuery = `
             ALTER TABLE "${tableName}"
             ADD COLUMN "${columnName}" ${init}
         `;
 
-        await MAIN.run(newColQuery);
+        return MAIN.run(query);
     }));
 
     if (!rows) return TableStatus.SUCCESS;
 
+    // adds rows to the table
     await Promise.all(rows.map(async (row) => {
         const primaryKey = Object.keys(columns).find(columnName => columns[columnName].primaryKey);
 
         if (!primaryKey) {
-            console.log(`Table ${tableName} does not have a primary key, cannot insert row`);
+            log(`Table ${tableName} does not have a primary key, cannot insert row`);
             return;
         }
 
@@ -205,8 +237,9 @@ async function createTable(tableName: string, table: Table): Promise<TableStatus
         const result = await MAIN.get(query, [row[primaryKey]]);
 
         if (result) {
-            console.log(`Row with primary key ${row[primaryKey]} already exists in table ${tableName}, checking for updates...`);
+            log(`Row with primary key ${row[primaryKey]} already exists in table ${tableName}, checking for updates...`);
 
+            // if the row exists, check if it needs to be updated
             if (!Object.keys(row).every(columnName => row[columnName] === result[columnName])) {
                 const deleteQuery = `
                     DELETE FROM "${tableName}"
@@ -230,7 +263,7 @@ async function createTable(tableName: string, table: Table): Promise<TableStatus
                 return;
             }
         } else {
-            console.log(`Row with primary key ${row[primaryKey]} does not exist in table ${tableName}, inserting row...`);
+            log(`Row with primary key ${row[primaryKey]} does not exist in table ${tableName}, inserting row...`);
 
             const query = `
                 INSERT INTO "${tableName}" (${Object.keys(row).map(k => `"${k}"`).join(', ')})
@@ -258,9 +291,9 @@ type Manifest = {
     }[];
 }
 
-
+// run database updates
 async function runUpdates(updates: Update[]) {
-    console.log('Checking for database updates...');
+    log('Checking for database updates...');
 
     const manifest = JSON.parse(
         fs.readFileSync(
@@ -269,7 +302,7 @@ async function runUpdates(updates: Update[]) {
 
     const { lastUpdate, updates: doneUpdates } = manifest;
 
-    console.log('Last update:', new Date(lastUpdate).toLocaleString());
+    log('Last update:', new Date(lastUpdate).toLocaleString());
 
     manifest.updates.push(...((await Promise.all(updates.map(async update => {
         const { name, description, test, execute } = update;
@@ -277,11 +310,11 @@ async function runUpdates(updates: Update[]) {
         const result = await test(new DB('main'));
 
         if (result) {
-            console.log(`Running update ${name}...`);
+            log(`Running update ${name}...`);
             try {
                 await execute(new DB('main'));
             } catch (e) {
-                console.log(`Error running update ${name}:`, e);
+                log(`Error running update ${name}:`, e);
                 return;
             }
             return {
@@ -289,17 +322,18 @@ async function runUpdates(updates: Update[]) {
                 date: Date.now()
             }
         }
-    }))).filter(Boolean)));
+    }))).filter(Boolean) as { name: string, date: number }[]));
 
     fs.writeFileSync(path.resolve(__dirname, "../history/manifest.txt"), JSON.stringify(manifest, null, 4));
 }
 
+// generates a backup of the database
 function makeBackup() {
-    console.log('Backing up database...');
+    log('Backing up database...');
 
-    const newDB = path.resolve(__dirname, './history', `${Date.now()}.db`);
+    const newDB = path.resolve(__dirname, '../history', `${Date.now()}.db`);
 
-    fs.copyFileSync(path.resolve(__dirname, '../database/main.db'), newDB);
+    fs.copyFileSync(path.resolve(__dirname, '../db/main.db'), newDB);
 }
 
 // cannot use setTimeout because the integer may overflow
@@ -318,9 +352,9 @@ const daysTimeout = (cb: () => void, days: number) => {
 }
 
 
-
+// deletes database backups after 7 days
 function setBackupIntervals() {
-    console.log('Setting backup intervals...');
+    log('Setting backup intervals...');
 
     const files = fs.readdirSync(path.resolve(__dirname, '../history'));
 
@@ -335,7 +369,7 @@ function setBackupIntervals() {
         const days = Math.floor(7 - (diff / (1000 * 60 * 60 * 24)));
 
         const deleteFile = () => {
-            console.log('Deleting file:', p);
+            log('Deleting file:', p);
             fs.unlinkSync(p);
         }
 
@@ -343,23 +377,24 @@ function setBackupIntervals() {
     }
 }
 
+// wrapper for running functions
 const runFunction = async(fn: () => any|Promise<any>) => {
     const now = Date.now();
     try {
         await fn();
     } catch (e) {
-        console.log('Error running function:', fn.name);
-        console.error(e);
+        error('Error running function:', fn.name);
+        error(e);
         return;
     }
 
-    console.log('Finished running function:', fn.name, 'in', Date.now() - now, 'ms');
+    log('Finished running function:', fn.name, 'in', Date.now() - now, 'ms');
 }
 
-
+// creates .env file if it doesn't exist
 const initEnv = () => {
     if (fs.existsSync(path.resolve(__dirname, '../.env'))) return;
-    console.log('Creating .env file...');
+    log('Creating .env file...');
     fs.writeFileSync(path.resolve(__dirname, '../.env'), `
         PORT="3000"
         DB_KEY=""
@@ -376,7 +411,7 @@ const initEnv = () => {
 
 
 
-
+// entry point
 export const serverUpdate = async () => {
     try {
         await runTs(path.resolve(__dirname, './updates'));
@@ -385,10 +420,10 @@ export const serverUpdate = async () => {
     const updates: Update[] = fs.readdirSync(path.resolve(__dirname, './updates')).map(file => {
         if (file.endsWith('.js')) {
             file = file.replace('.js', '');
-            console.log('Imported update:', file);
+            log('Imported update:', file);
             return require('./tests' + file) as Update;
         }
-    }).filter(Boolean);
+    }).filter(Boolean) as Update[];
 
     function updateTests() {
         return runUpdates(updates);
@@ -405,7 +440,7 @@ export const serverUpdate = async () => {
 
     await runFunction(setBackupIntervals);
 
-    return console.log('Finished running server update');
+    return log('Finished running server update');
 }
 
 
@@ -415,7 +450,7 @@ if (args.includes('main')) {
             parentPort?.postMessage('update-complete');
         })
         .catch(e => {
-            console.log('Error running server update:', e);
+            log('Error running server update:', e);
             parentPort?.postMessage('update-error');
         });
 }

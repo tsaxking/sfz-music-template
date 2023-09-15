@@ -71,7 +71,7 @@
             e.preventDefault();
             const { value } = form;
 
-            ServerRequest.new('/account/sign-up', {
+            ServerRequest.post('/account/sign-up', {
                 ...value,
                 Email: undefined,
                 __email: value.Email

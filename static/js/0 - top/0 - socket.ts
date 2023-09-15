@@ -77,8 +77,11 @@ class SocketWrapper {
 
 
     // wrapper for socket so that it can update the model and view if on the correct page with a single listener
-    on(event: string, dataUpdate: (...args: any[]) => void) {
-        if (SocketWrapper.listeners[event]) return console.error(`Event ${event} already has a listener`);
+    on(event: string, dataUpdate: (...args: any[]) => void): SocketListener {
+        if (SocketWrapper.listeners[event]) {
+            console.error(`Event ${event} already has a listener`);
+            return SocketWrapper.listeners[event];
+        }
         const listener = new SocketListener(event);
         SocketWrapper.listeners[event] = listener;
 
@@ -97,6 +100,8 @@ class SocketWrapper {
                 }
             }
         });
+
+        return listener;
     }
 }
 

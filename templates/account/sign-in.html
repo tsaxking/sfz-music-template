@@ -48,7 +48,7 @@
             e.preventDefault();
             const { value } = form;
 
-            ServerRequest.new('/account/sign-in', value);
+            ServerRequest.post('/account/sign-in', value);
         });
 
         document.getElementById('sign-in').append(form.el);

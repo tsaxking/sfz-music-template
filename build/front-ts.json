@@ -30,6 +30,8 @@
     // "useUnknownInCatchVariables": true,               /* Default catch clause variables as 'unknown' instead of 'any'. */
     "alwaysStrict": true,                             /* Ensure 'use strict' is always emitted. */
 
+    "moduleResolution": "node",                           /* Specify how TypeScript looks up a file from a given module specifier. */
+
     "ignoreDeprecations": "5.0",
 
     "skipLibCheck": true                                 /* Skip type checking all .d.ts files. */

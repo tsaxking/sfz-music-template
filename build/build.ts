@@ -74,7 +74,8 @@ export const watchIgnoreDirs: string[] = [
     path.resolve(__dirname, '../.gitattributes'),
     path.resolve(__dirname, './updates'),
     path.resolve(__dirname, '../logs'),
-    path.resolve(__dirname, '../node_modules')
+    path.resolve(__dirname, '../node_modules'),
+    path.resolve(__dirname, '../scripts')
 ];
 
 
@@ -101,7 +102,7 @@ for (const dir of dirs) {
 
 
 
-
+// pull json data and remove comments
 const readJSON = (path: string): any => {
     let content = fs.readFileSync(path, 'utf8');
 
@@ -145,6 +146,7 @@ enum DownloadStatus {
     DOWNLOADING = 'downloading'
 }
 
+// check if file has completed downloading
 const isDownloaded = async(url: string): Promise<boolean> => {
     return new Promise(async (res, rej) => {
         parentPort?.postMessage('Requesting: ' + url);
@@ -163,6 +165,7 @@ const isDownloaded = async(url: string): Promise<boolean> => {
 
 
 // this can produce race conditions because it is multithreaded
+// pull file from url and save it to dependencies folder
 const fromUrl = async (url: string): Promise<{ data: any, safeUrl: string }> => {
     const unsafeChars = ['/', ':', '.', '?', '&', '=', '%', '#', '+', ' '];
     let safeUrl = `${url}`;
@@ -207,6 +210,7 @@ const fromUrl = async (url: string): Promise<{ data: any, safeUrl: string }> => 
     });
 }
 
+// runs tsc on a directory
 const fromTsDir = async (dirPath: string, ext: string, stream: boolean = true): Promise<{
     content: string,
     files: string[]
@@ -242,6 +246,8 @@ const fromTsDir = async (dirPath: string, ext: string, stream: boolean = true): 
                             [tsConfig.compilerOptions.outFile] :
                             []
                 });
+
+                // return the contents of the built file
                 if (tsConfig?.compilerOptions?.outFile) {
                     return res(fromFile(
                         path.resolve(__dirname, path.relative(__dirname, dirPath), tsConfig.compilerOptions.outFile)
@@ -259,6 +265,7 @@ const fromTsDir = async (dirPath: string, ext: string, stream: boolean = true): 
     });
 }
 
+// generates css from sass
 const fromSass = async (filePath: string): Promise<string> => {
     return new Promise(async (res, rej) => {
         try {
@@ -276,6 +283,7 @@ const fromSass = async (filePath: string): Promise<string> => {
     });
 }
 
+// builds from a single file
 const fromFile = (filePath: string, ext: string): Promise<{
     content: string,
     files: string[]
@@ -314,7 +322,7 @@ const fromFile = (filePath: string, ext: string): Promise<{
     });
 }
 
-
+// builds from a directory
 const fromDir = async (dirPath: string, ext: '.js' | '.css', ignoreList: string[]): Promise<{
     content: string,
     files: string[]
@@ -328,6 +336,7 @@ const fromDir = async (dirPath: string, ext: '.js' | '.css', ignoreList: string[
             '.css': `\n`
         };
 
+        // recursive function to pull the contents of a directory
         const readDir = async (dirPath: string) => {
             // log(dirPath);
             if (dirPath.includes('.git')) return;
@@ -359,7 +368,7 @@ const fromDir = async (dirPath: string, ext: '.js' | '.css', ignoreList: string[
 
                 if (file.endsWith('.css')) {
                     // check if .sass or .scss file exists
-                    // if so, continue
+                    // if so, then don't add the .css file since it will be added later
                     let hasSass = await fsPromises.access(path.resolve(dirPath, file.replace('.css', '.sass')))
                         .then(() => true)
                         .catch(() => false);
@@ -400,10 +409,8 @@ const fromDir = async (dirPath: string, ext: '.js' | '.css', ignoreList: string[
 
 
 
-
+// copies the contents of a file and places it in the build directory
 const copyFile = async (filePath: string, streamName: string, index: number): Promise<void> => {
-    // use fsPromises
-
     return new Promise(async (res, rej) => {
         try {
             if (filePath.includes('http')) {
@@ -424,6 +431,8 @@ const copyFile = async (filePath: string, streamName: string, index: number): Pr
             const hasTS = filePath.includes('[ts]');
 
             // filePath = filePath.replace('[ts]', '');
+
+            // log('Copying file:', filePath);
 
             // copy all files or folders from path
             await fsPromises.cp(
@@ -449,7 +458,7 @@ const copyFile = async (filePath: string, streamName: string, index: number): Pr
     });
 };
 
-
+// runs tsc on the server-functions directory
 export const buildServerFunctions = async (): Promise<void> => {
     return new Promise((res, rej) => {
         // tsc an entire directory using ts package
@@ -478,6 +487,7 @@ export const buildServerFunctions = async (): Promise<void> => {
     });
 }
 
+// generates stream directory and makes all files and folders
 const buildInit = async(streamName: string, buildStream: BuildStream): Promise<void> => {
     const min = streamName
         .replace(
@@ -485,7 +495,6 @@ const buildInit = async(streamName: string, buildStream: BuildStream): Promise<v
             '.min' + path.extname(streamName)
         );
 
-    // log('Building stream:', streamName);
 
     const {
         files
@@ -507,11 +516,11 @@ const buildInit = async(streamName: string, buildStream: BuildStream): Promise<v
             .then(makeStreamDir)
             .catch(makeStreamDir)
     ]);
+    log('Building stream:', streamName, files);
 
     await Promise.all(
         Object.entries(files)
             .map(async ([index, file]) => {
-                // log('Copying file:', file);
                 if (file.includes('--ignore-build')) return;
                 if (file.includes('http')) {
                     if (!file.includes('--force')) {
@@ -525,7 +534,7 @@ const buildInit = async(streamName: string, buildStream: BuildStream): Promise<v
             }));
 };
 
-
+// this is meant for development mode, but it is highly performance intensive and should not be used yet
 const startDevWorkers = (streamName: string): Promise<void> => {
     return new Promise((res, rej) => {
         const dir = path.resolve(__dirname, `../static/build/dir-${streamName.replace('.', '-')}`);
@@ -563,7 +572,8 @@ enum BuildType {
     POST = 'post'
 }
 
-const _runBuild = async(streamName: string, buildStream: BuildStream, buildType: BuildType, ignore: string[] = [], minify: boolean = true, env: string): Promise<void> => {
+// runs the build, but checks if it needs to run init first
+const startBuild = async(streamName: string, buildStream: BuildStream, buildType: BuildType, ignore: string[] = [], minify: boolean = true, env: string): Promise<void> => {
     try {
         // log('Running build: ', streamName);
         if (buildType === BuildType.INIT) await buildInit(streamName, buildStream);
@@ -574,11 +584,9 @@ const _runBuild = async(streamName: string, buildStream: BuildStream, buildType:
 };
 
 
-
-export const stopWorkers = () => {
-    for (const w of workers) {
-        w.terminate();
-    };
+// stops all build workers so that they can be restarted
+export const stopWorkers = async () => {
+    return Promise.all(workers.map(w => w.terminate()));
 };
 
 const workerDownloads = {};
@@ -587,6 +595,7 @@ export const renderedBuilds: {
 } = {};
 
 let workers: Worker[] = [];
+// entry point for build process
 export const doBuild = async(env: string): Promise<void> => {
     let build: Build;
     try {
@@ -599,12 +608,13 @@ export const doBuild = async(env: string): Promise<void> => {
     return new Promise(async(res, rej) => {
         try {
             if (isMainThread) {
-
+                // main thread is used to start all the workers and handle the messages
                 workers = Object.keys(build.streams)
                     .map((streamName): Worker => {
                         const worker = new Worker(
                             path.resolve(__dirname, './build.js'), {
                             workerData: {
+                                // pass in which stream to use
                                 streamName,
                                 stream: streams[streamName],
                                 buildType: BuildType.INIT,
@@ -648,6 +658,7 @@ export const doBuild = async(env: string): Promise<void> => {
                         return worker;
                     });
 
+                    // resolves when all workers are done
                 await Promise.all(workers.map(w => {
                     return new Promise((res, rej) => {
                         w.on('exit', () => {
@@ -658,10 +669,11 @@ export const doBuild = async(env: string): Promise<void> => {
 
                 res();
             } else {
+                // worker thread is used to run a single build stream
                 const { streamName, stream, buildType, env } = workerData;
                 // log('New worker', workerData);
                 try {
-                    await _runBuild(streamName, stream, buildType, ignore, minify, env);
+                    await startBuild(streamName, stream, buildType, ignore, minify, env);
                 } catch {
                     // log('Error running build');
                     parentPort?.postMessage('error');
@@ -674,7 +686,7 @@ export const doBuild = async(env: string): Promise<void> => {
 
 
 
-
+// post initialization, this will handle all build processes, combining, and minification of files
 const build = async(streamName: string, buildStream: BuildStream, ignore: string[], minify: boolean, env: string): Promise<void> => {
     const streamDirPath = path.resolve(__dirname, `../static/build/dir-${streamName.replace('.', '-')}`);
     const streamPath = path.resolve(__dirname, '../static/build', streamName);
@@ -735,7 +747,8 @@ const build = async(streamName: string, buildStream: BuildStream, ignore: string
 };
 
 
-
+// used for a watch program, this will only build the file that was changed
+// TODO: this will sometime inject a file into a build stream twice. In that case, just run the command 'build' while the main process has started
 export const onFileChange = async (filename: string, env: string) => {
     if (filename.includes('server-functions') || filename === path.resolve(__dirname, '../server.ts')) {
         log('Server functions changed, file');
@@ -750,7 +763,7 @@ export const onFileChange = async (filename: string, env: string) => {
             skipLibCheck: true
         });
 
-        const emitResult = program.emit();
+        // const emitResult = program.emit();
 
         // const allDiagnostics = ts.getPreEmitDiagnostics(program).concat(emitResult.diagnostics);
 
@@ -785,18 +798,19 @@ export const onFileChange = async (filename: string, env: string) => {
         .replace('.sass', '.css')
         .replace('.scss', '.css');
 
-    const dirPath = path.dirname(filePath);
+    let dirPath = path.dirname(filePath);
     const basename = path.basename(filePath);
-    const replaceFilename = dirPath.replace(new RegExp('/', 'g'), '') + '/' + basename;
+    // const replaceFilename = dirPath.replace(new RegExp('/', 'g'), '') + '/' + basename;
 
-    console.log(replaceFilename);
-
-    const isFileInStream = (files: string[]): string | undefined => {
+    const getStreamDir = (files: string[]): string | undefined => {
+        // checks if the file's directory is in the stream
+        // if the filename (full filepath) includes the full directory path, then it is in the stream
         const inStream = files.find((file) => {
                 const fileDir = path.resolve(__dirname, file.replace('[ts]', '').replace('--ignore-build', ''));
                 return filename.includes(fileDir);
             });
 
+        // returns the directory path of the file in the stream
         return inStream;
     }
 
@@ -804,9 +818,21 @@ export const onFileChange = async (filename: string, env: string) => {
         Object.entries(streams)
         .map(async ([streamName, buildStream]) => {
             return new Promise(async (res, rej) => {
-                const filePath = isFileInStream(buildStream.files);
+                const streamFolder = getStreamDir(buildStream.files);
 
-                if (filePath) {
+                if (streamFolder) {
+                    // console.log({streamFolder});
+
+                    // generate relative path to build directory
+                    const replacer = streamFolder
+                            .replace('[ts]', '')
+                            .replace('--ignore-build', '')
+                            .replace(new RegExp('/', 'g'), '\\');
+
+                    dirPath = dirPath.replace(
+                        replacer,
+                        ''
+                    ).trim();
                     log('File in stream', filename, streamName);
 
                     const files = await fsPromises.readdir(
@@ -814,12 +840,20 @@ export const onFileChange = async (filename: string, env: string) => {
                     );
     
                     const folder = files.find((file) => {
-                        return file.includes(filePath
+                        return file.includes(streamFolder
                             .replace(new RegExp('/', 'g'), '')
-                            .replace(/\\/g, ''));
+                            .replace(/\\/g, '')
+                            );
                     });
+
+                    // console.log({ folder, dirPath, replacer });
     
-                    if (!folder) return res(null);
+                    // if the folder does not exist, the file may have been created after the build process
+                    // in that case, just run the command 'build' while the main process has started
+                    if (!folder) {
+                        log('Folder not found, file may have been created after build process. Run "build"');
+                        return res(null);
+                    }
     
                     let fileContent: string = ''; // content to inject into stream file
                     let replaceContent: string = ''; // content to find in stream file
@@ -828,12 +862,13 @@ export const onFileChange = async (filename: string, env: string) => {
                         'utf8'
                     );
 
+                    // handle different file types
                     switch (path.extname(filename)) {
                         case '.js':
                         case '.css':
                             // find each file
                             replaceContent = await fsPromises.readFile(
-                                path.resolve(__dirname, '../static/build/dir-' + streamName.replace('.', '-'), folder, basename),
+                                path.resolve(__dirname, '../static/build/dir-' + streamName.replace('.', '-'), folder, dirPath, basename),
                                 'utf8'
                             );
                             fileContent = await fsPromises.readFile(
@@ -844,12 +879,14 @@ export const onFileChange = async (filename: string, env: string) => {
                         case '.sass':
                         case '.scss':
                             replaceContent = await fsPromises.readFile(
-                                path.resolve(__dirname, '../static/build/dir-' + streamName.replace('.', '-'), folder, basename.replace(path.extname(basename), '.css')),
+                                path.resolve(__dirname, '../static/build/dir-' + streamName.replace('.', '-'), folder, dirPath, basename.replace(path.extname(basename), '.css')),
                                 'utf8'
                             );
                             fileContent = await fromSass(filename);
                             break;
                         case '.ts':
+                            // ts will compile a folder into a single file
+                            // compile the content of the folder, then inject it into the stream file
                             replaceContent = await fsPromises.readFile(
                                 path.resolve(__dirname, '../static/build/dir-' + streamName.replace('.', '-'), folder, 'index.js'),
                                 'utf8'
@@ -859,7 +896,13 @@ export const onFileChange = async (filename: string, env: string) => {
                                 return new Promise(async (resolve) => {
                                     await fsPromises.copyFile(
                                         filename,
-                                        path.resolve(__dirname, '../static/build/dir-' + streamName.replace('.', '-'), folder, basename.replace(path.extname(basename), '.ts'))
+                                        path.resolve(
+                                            __dirname,
+                                            '../static/build/dir-' + streamName.replace('.', '-')
+                                            + '/' + folder
+                                            + '/' + dirPath
+                                            + '/' + basename.replace(path.extname(basename), '.ts')
+                                        )
                                     );                                
                                     const child = spawn('tsc', [], {
                                         stdio: 'pipe',
@@ -878,13 +921,16 @@ export const onFileChange = async (filename: string, env: string) => {
                             break;
                     }
 
+                    // inject the content into the stream file
                     streamContent = streamContent.replace(replaceContent, fileContent);
 
+                    // write the stream file
                     await fsPromises.writeFile(
                         path.resolve(__dirname, '../static/build', streamName),
                         streamContent
                     );
 
+                    // handle minimization
                     if (minify) {
                         const ext = path.extname(streamName);
                         let content = streamContent;
@@ -925,4 +971,6 @@ export const onFileChange = async (filename: string, env: string) => {
     }));
 };
 
+// this will run the build process if it is not the main thread
+// doBuild() on the main thread is called by ../main.ts
 if (!isMainThread) doBuild(workerData?.env);

@@ -117,7 +117,7 @@ class Page {
     async fetch(path: string, body?: any, options?: RequestOptions): Promise<any> {
         if (!path.startsWith('/')) path = `/${path}`;
         return new Promise((res, rej) => {
-            ServerRequest.new(`/api/${this.name.toLowerCase()}${path}`, body, options)
+            ServerRequest.post(`/api/${this.name.toLowerCase()}${path}`, body, options)
                 .then(res)
                 .catch(rej);
         });
@@ -143,17 +143,3 @@ class Page {
         return vu;
     }
 } 
-
-
-window.onpopstate = (e) => {
-    e.preventDefault();
-    const page = Page.pages[e.state.page];
-    if (page) page.open();
-    // open first (or home) page if no page is found
-    else Page.home.open();
-}
-
-socket.on('page-open', (page: string) => {
-    const p = Page.pages[page];
-    if (p) p.open();
-});

@@ -129,12 +129,15 @@ export class Status {
             data = JSON.stringify(data);
         } catch (e) {
             console.error('Unable to stringify data for status message.', e);
+            console.log('Data:', data);
             data = undefined;
         }
 
 
         const message = messages[id];
         if (!message) {
+            console.log('Unknown status message requested.', id);
+
             return new Status(
                 'Unknown Error',
                 'An unknown error has occurred.',
@@ -144,7 +147,7 @@ export class Status {
                 false,
                 req,
                 data
-            )
+            );
         }
 
         return new Status(
@@ -218,7 +221,7 @@ export class Status {
     get html() {
         return getTemplateSync('status', {
             ...this,
-            data: this.data ? JSON.parse(this.data) : 'No data provided.'
+            data: this.data ? JSON.stringify(this.data) : 'No data provided.'
         });
     }
 

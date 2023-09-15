@@ -6,7 +6,7 @@ class Role {
             return Role.roles;
         }
 
-        return ServerRequest.new('/roles/all', null, { cached: true })
+        return ServerRequest.post('/roles/all', null, { cached: true })
             .then((roles) => roles.map((r: any) => {
                 new Role(r.name, r.description);
             }));

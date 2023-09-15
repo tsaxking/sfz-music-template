@@ -12,6 +12,7 @@ import { Status } from './server-functions/structure/status';
 import { SocketWrapper } from './server-functions/structure/socket';
 import Account from './server-functions/structure/accounts';
 import { getTemplateSync, getJSON, LogType, log, getTemplate, getJSONSync } from './server-functions/files';
+import { Member } from './server-functions/structure/member';
 
 config();
 
@@ -94,6 +95,13 @@ app.use(express.json({ limit: '50mb' }));
 app.use('/static', express.static(path.resolve(__dirname, './static')));
 app.use('/uploads', express.static(path.resolve(__dirname, './uploads')));
 
+app.get('/favicon.ico', (req, res) => {
+    res.sendFile(path.resolve(__dirname, './static/pictures/logo-square.png'));
+});
+
+app.get('/robots.txt', (req, res) => {
+    res.sendFile(path.resolve(__dirname, './static/pictures/robots.jpg'));
+});
 
 
 app.use((req, res, next) => {
@@ -329,6 +337,11 @@ app.use('/404', (req, res) => {
     Status.from('page.notFound', req).send(res);
 });
 
+import { router as MemberRouter } from './server-functions/routes/member';
+
+app.use('/member', MemberRouter);
+
+
 
 
 
@@ -398,8 +411,6 @@ const getBlankTemplate = (page: string): NextFunction => {
             script: await getTemplate('dashboards/' + page + '/script'),
         };
 
-        console.log(cstr.pages);
-
         const html = await getTemplate('dashboard-index', cstr);
         res.status(200).send(html);
     };
@@ -411,7 +422,7 @@ const getBlankTemplate = (page: string): NextFunction => {
 
 
 
-app.get('/member/:page', Account.isSignedIn, getBlankTemplate('member'));
+app.get('/member/:page', Account.isSignedIn, Member.isMember, getBlankTemplate('member'));
 // app.get('/instructor/:page', Account.isSignedIn, getBlankTemplate('instructor'));
 app.get('/admin/:page', Account.allowRoles('admin'), getBlankTemplate('admin'));
 // app.get('/student/:page', Account.isSignedIn, getBlankTemplate('student'));
@@ -490,33 +501,7 @@ app.use((req, res, next) => {
 });
 
 
-
-const clearLogs = () => {
-    fs.writeFileSync('./logs/request.csv', '');
-    logCache = [];
-}
-
-const timeTo12AM = 1000 * 60 * 60 * 24 - Date.now() % (1000 * 60 * 60 * 24);
-console.log('Clearing logs in', timeTo12AM / 1000 / 60, 'minutes');
-setTimeout(() => {
-    clearLogs();
-    setInterval(clearLogs, 1000 * 60 * 60 * 24);
-}, timeTo12AM);
-
-
 server.listen(PORT, () => {
     console.log('------------------------------------------------');
     console.log(`Listening on port \x1b[35m${DOMAIN}...\x1b[0m`);
-});
-
-parentPort?.on('message', (msg) => {
-    switch(msg) {
-        case 'clear-logs':
-            clearLogs();
-            break;
-        case 'stop':
-            console.log('Closing server...');
-            process.exit(0);
-            break;
-    }
 });
