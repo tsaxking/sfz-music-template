@@ -14,11 +14,12 @@ sessions.txt
 archive/
 history/
 uploads/
-db/
+# db/
 static/build/
 */scss/*.css
 ignore-list.txt
 /logs/*.csv
+*.db
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json

@@ -42,7 +42,7 @@ const error = (...args: any[]) => {
 
 
 
-const [,,script] = process.argv;
+const [,,script, ...args] = process.argv;
 
 if (!script) throw new Error('No script provided');
 
@@ -88,7 +88,7 @@ ts()
             if (!main) {
                 return error('No main function found in ' + script + '.ts', 'Please export a function called main');
             }
-            main();
+            main(...args);
         } catch (e) {
             error('Error running script: ', e);
         }

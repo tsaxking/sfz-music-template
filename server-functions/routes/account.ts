@@ -2,7 +2,8 @@ import { NextFunction, Response, Router } from 'express';
 import { ColorCode, Status } from '../structure/status';
 import Role from '../structure/roles';
 import Account, { AccountDynamicProperty } from '../structure/accounts';
-import { fileStream, getTemplate } from '../files';
+import { getTemplate } from '../files';
+import { fileStream } from '../stream';
 import { Session } from '../structure/sessions';
 import { Server } from 'socket.io';
 import { SocketWrapper } from '../structure/socket';
@@ -181,7 +182,7 @@ router.post('/my-account', async(req, res) => {
 
 
 
-router.post('/all', Account.allowRoles('developer'), async (req, res) => {
+router.post('/all', Role.allowRoles('developer'), async (req, res) => {
     const accounts = await Account.all();
     res.json(await Promise.all(accounts.map(a => a.safe())));
 });
@@ -236,37 +237,37 @@ router.post('/remove-role', Account.allowPermissions('editRoles'), async(req, re
 });
 
 
-router.post('/add-skill', async(req, res) => {
-    const { username, skill, years } = req.body;
+// router.post('/add-skill', async(req, res) => {
+//     const { username, skill, years } = req.body;
 
-    if (typeof skill !== 'string' || skill.length < 1) return Status.from('account.invalidSkill', req).send(res);
-    if (typeof years !== 'number' || years <= 0) return Status.from('account.invalidYears', req).send(res);
+//     if (typeof skill !== 'string' || skill.length < 1) return Status.from('account.invalidSkill', req).send(res);
+//     if (typeof years !== 'number' || years <= 0) return Status.from('account.invalidYears', req).send(res);
 
-    // if (username === req.session.account?.username) return Status.from('account.cannotEditSelf', req).send(res);
+//     // if (username === req.session.account?.username) return Status.from('account.cannotEditSelf', req).send(res);
 
-    const account = await Account.fromUsername(username);
-    if (!account) return Status.from('account.notFound', req, { username }).send(res);
+//     const account = await Account.fromUsername(username);
+//     if (!account) return Status.from('account.notFound', req, { username }).send(res);
 
-    const [status] = await account.addSkill({ skill, years });
-    Status.from('skill.' + status, req, { username, skill, years }).send(res);
+//     const [status] = await account.addSkill({ skill, years });
+//     Status.from('skill.' + status, req, { username, skill, years }).send(res);
 
-    req.io.emit('add-skill', username, skill);
-});
+//     req.io.emit('add-skill', username, skill);
+// });
 
 
-router.post('/remove-skill', async(req, res) => {
-    const { username, skill } = req.body;
+// router.post('/remove-skill', async(req, res) => {
+//     const { username, skill } = req.body;
 
-    // if (username === req.session.account?.username) return Status.from('account.cannotEditSelf', req).send(res);
+//     // if (username === req.session.account?.username) return Status.from('account.cannotEditSelf', req).send(res);
 
-    const account = await Account.fromUsername(username);
-    if (!account) return Status.from('account.notFound', req, { username }).send(res);
+//     const account = await Account.fromUsername(username);
+//     if (!account) return Status.from('account.notFound', req, { username }).send(res);
 
-    const [status] = await account.removeSkill(skill);
-    Status.from('skill.' + status, req, { username, skill }).send(res);
+//     const [status] = await account.removeSkill(skill);
+//     Status.from('skill.' + status, req, { username, skill }).send(res);
 
-    req.io.emit('remove-skill', username, skill);
-});
+//     req.io.emit('remove-skill', username, skill);
+// });
 
 router.get('/verify/:id', async (req, res, next) => {
     const { id } = req.params;
@@ -405,17 +406,17 @@ router.post('/change-picture', fileStream({
     Status.from('account.' + status, req, { username, picture: id }).send(res);
 });
 
-router.post('/change-bio', Account.allowPermissions('editUsers'), async(req, res) => {
-    const { username, bio } = req.body;
+// router.post('/change-bio', Account.allowPermissions('editUsers'), async(req, res) => {
+//     const { username, bio } = req.body;
 
-    const account = await Account.fromUsername(username);
-    if (!account) return Status.from('account.notFound', req, { username }).send(res);
+//     const account = await Account.fromUsername(username);
+//     if (!account) return Status.from('account.notFound', req, { username }).send(res);
 
-    const status = await account.changeBio(bio);
+//     const status = await account.changeBio(bio);
 
-    Status.from('account.' + status, req, { username, bio }).send(res);
+//     Status.from('account.' + status, req, { username, bio }).send(res);
 
-    req.io.emit('change-bio', username, bio);
-});
+//     req.io.emit('change-bio', username, bio);
+// });
 
 export default router;

@@ -8,7 +8,7 @@ import { validate } from 'deep-email-validator';
 import { Email, EmailOptions, EmailType } from "./email";
 import { config } from 'dotenv';
 import Filter from 'bad-words';
-import { MembershipProgress } from "./member";
+import { Member, MemberInfo, MembershipProgress } from "./member";
 
 
 config();
@@ -117,25 +117,10 @@ export default class Account {
         [username: string]: Account
     } = {};
 
-    static async fromRole(role: string): Promise<Account[]> {
-        const query = `
-            SELECT * FROM Accounts
-            WHERE roles LIKE ?
-        `;
-
-        const data = await MAIN.all(query, [`%${role}%`]);
-        return data.map((a: AccountObject) => new Account(a));
-    }
-
     static async fromUsername(username: string): Promise<Account|null> {
         if (Account.cachedAccounts[username]) return Account.cachedAccounts[username];
 
-        const query = `
-            SELECT * FROM Accounts
-            WHERE username = ?
-        `;
-
-        let data = await MAIN.get(query, [username]);
+        let data = await MAIN.get('account-from-username', [username]);
         if (!data) return null;
         const a = new Account(data as AccountObject);
         Account.cachedAccounts[username] = a;
@@ -149,13 +134,8 @@ export default class Account {
             if (account.email === email) return account;
         }
 
-        // find in database
-        const query = `
-            SELECT * FROM Accounts
-            WHERE email = ?
-        `;
 
-        let data = await MAIN.get(query, [email]);
+        let data = await MAIN.get('account-from-email', [email]);
         if (!data) return null;
         const a = new Account(data as AccountObject);
         Account.cachedAccounts[a.username] = a;
@@ -167,12 +147,7 @@ export default class Account {
 
         if (cachedAccount) return cachedAccount;
 
-        const query = `
-            SELECT * FROM Accounts
-            WHERE verification = ?
-        `;
-
-        const act = await MAIN.get(query, [key]);
+        const act = await MAIN.get('account-from-verification-key', [key]);
         if (!act) return null;
 
         const account = new Account(act as AccountObject);
@@ -187,13 +162,7 @@ export default class Account {
             if (account.passwordChange === key) return account;
         }
 
-
-        const query = `
-            SELECT * FROM Accounts
-            WHERE passwordChange = ?
-        `;
-
-        let data = await MAIN.get(query, [key]);
+        let data = await MAIN.get('account-from-password-change', [key]);
         if (!data) return null;
         const a = new Account(data as AccountObject);
         Account.cachedAccounts[a.username] = a;
@@ -210,44 +179,22 @@ export default class Account {
                 return s.send(res);
             }
 
-            account.getPermissions()
-                .then((permissions) => {
-                    if (permissions.permissions.every((p) => permission.includes(p))) {
-                        return next();
-                    } else {
-                        const s = Status.from('permissions.invalid', req);
-                        return s.send(res);
-                    }
-                })
-                .catch((err) => {
-                    const s = Status.from('permissions.error', req, err);
-                    return s.send(res);
-                })
+            // account.getPermissions()
+            //     .then((permissions) => {
+            //         if (permissions.permissions.every((p) => permission.includes(p))) {
+            //             return next();
+            //         } else {
+            //             const s = Status.from('permissions.invalid', req);
+            //             return s.send(res);
+            //         }
+            //     })
+            //     .catch((err) => {
+            //         const s = Status.from('permissions.error', req, err);
+            //         return s.send(res);
+            //     })
         }
 
         return fn as NextFunction;
-    }
-
-    static allowRoles(...role: string[]): NextFunction {
-        const fn = async (req: Request, res: Response, next: NextFunction) => {
-            const { session } = req;
-            const { account } = session;
-
-            if (!account) {
-                return Status.from('account.notLoggedIn', req).send(res);
-            }
-
-            const roles = await account.getRoles();
-
-            if (role.every(r => roles.find(_r => _r.name === r))) {
-                return next();
-            } else {
-                const s = Status.from('roles.invalid', req);
-                return s.send(res);
-            }
-        }
-
-        return fn as unknown as NextFunction;
     }
 
     static isSignedIn(req: Request, res: Response, next: NextFunction) {
@@ -279,11 +226,7 @@ export default class Account {
     }
 
     static async all(): Promise<Account[]> {
-        const query = `
-            SELECT * FROM Accounts
-        `;
-
-        const data = await MAIN.all(query);
+        const data = await MAIN.all('accounts');
         return data.map((a: AccountObject) => new Account(a));
     }
 
@@ -370,32 +313,16 @@ export default class Account {
 
         const { salt, key } = Account.newHash(password);
 
-        const query = `
-            INSERT INTO Accounts (
-                username,
-                key,
-                salt,
-                info,
-                roles,
-                firstName,
-                lastName,
-                email,
-                verified
-            ) VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?
-            )
-        `;
 
-        await MAIN.run(query, [
+        await MAIN.run('new-account', [
             username,
             key,
             salt,
             JSON.stringify({}),
-            JSON.stringify([]),
             firstName,
             lastName,
             email,
-            0
+            false
         ]);
 
         Account.fromUsername(username)
@@ -414,12 +341,7 @@ export default class Account {
         const account = await Account.fromUsername(username);
         if (!account) return AccountStatus.notFound;
 
-        const query = `
-            DELETE FROM Accounts
-            WHERE username = ?
-        `;
-
-        await MAIN.run(query, [username]);
+        await MAIN.run('delete-account', [username]);
 
         return AccountStatus.removed;
     }
@@ -492,13 +414,7 @@ export default class Account {
                 return AccountStatus.emailChangeExpired;
             }
 
-            const query = `
-                UPDATE Accounts
-                SET email = ?, emailChange = null
-                WHERE username = ?
-            `;
-
-            await MAIN.run(query, [email, this.username]);
+            await MAIN.run('change-email', [email, this.username]);
             this.email = email;
             delete this.emailChange;
 
@@ -506,12 +422,7 @@ export default class Account {
         }
 
 
-        const query = `
-            UPDATE Accounts
-            SET verified = 1, verification = null
-        `;
-
-        await MAIN.run(query);
+        await MAIN.run('verify', [this.username]);
         this.verified = 1;
         delete this.verification;
 
@@ -521,13 +432,8 @@ export default class Account {
 
     async sendVerification() {
         const key = uuid();
-        const query = `
-            UPDATE Accounts
-            SET verification = ?
-            WHERE username = ?
-        `;
 
-        await MAIN.run(query, [key, this.username]);
+        await MAIN.run('set-verification', [key, this.username]);
 
         const email = new Email(this.email, 'Verify your account', EmailType.link, {
             constructor: {
@@ -564,27 +470,9 @@ export default class Account {
 
 
 
-    async getMemberInfo(): Promise<{
-        skills: string[];
-        bio: string;
-        title: string;
-        resume: string|null;
-        status: MembershipProgress
-    }> {
-        const query = `
-            SELECT * FROM MemberInfo
-            WHERE username = ?
-        `;
-
-        const result = await MAIN.get(query, [this.username]);
-
-        return {
-            skills: await this.getSkills(),
-            bio: result?.bio || '',
-            title: result?.title || '',
-            resume: result?.resume || null,
-            status: result?.status || MembershipProgress.pending
-        };
+    async getMemberInfo(): Promise<MemberInfo | undefined> {
+        return Member.get(this.username)
+            .then((member) => member?.safe());
     }
 
     async sendEmail(subject: string, type: EmailType, options: EmailOptions) {
@@ -599,12 +487,7 @@ export default class Account {
 
 
     async getRoles(): Promise<Role[]> {
-        const query = `
-            SELECT * FROM AccountRoles
-            WHERE username = ?
-        `;
-
-        const data = await MAIN.all(query, [this.username]);
+        const data = await MAIN.all('account-roles', [this.username]);
 
         return Promise.all(data.map(({ role }) => {
             return Role.fromName(role);
@@ -620,16 +503,7 @@ export default class Account {
                 return AccountStatus.hasRole;
             }
 
-            const query = `
-                INSERT INTO AccountRoles (
-                    username,
-                    role
-                ) VALUES (
-                    ?, ?
-                )
-            `;
-
-            await MAIN.run(query, [this.username, role]);
+            await MAIN.run('add-account-role', [this.username, role]);
 
             return AccountStatus.roleAdded;
         }));
@@ -644,12 +518,7 @@ export default class Account {
                 return AccountStatus.noRole;
             }
 
-            const query = `
-                DELETE FROM AccountRoles
-                WHERE username = ? AND role = ?
-            `;
-
-            await MAIN.run(query, [this.username, role]);
+            await MAIN.run('remove-account-role', [this.username, role]);
 
             return AccountStatus.roleRemoved;
         }));
@@ -661,81 +530,25 @@ export default class Account {
 
 
 
-    async addSkill(...skills: { skill: string, years: number }[]): Promise<AccountStatus[]> {
-        return Promise.all(skills.map(async(skill) => {
-            const existsQuery = `
-                SELECT * FROM MemberSkills
-                WHERE username = ? AND skill = ?
-            `;
-
-            const exists = await MAIN.get(existsQuery, [this.username, skill.skill]);
-            if (exists) return AccountStatus.hasSkill;
-
-            const query = `
-                INSERT INTO MemberSkills (
-                    username,
-                    skill,
-                    years
-                ) VALUES (
-                    ?, ?, ?
-                )
-            `;
-
-            await MAIN.run(query, [this.username, skill.skill, Math.round(skill.years * 10) / 10]);
-            return AccountStatus.skillAdded;
-        }));
-    }
-
-    async removeSkill(...skills: string[]): Promise<AccountStatus[]> {
-        return Promise.all(skills.map(async(skill) => {
-            const existsQuery = `
-                SELECT * FROM MemberSkills
-                WHERE username = ? AND skill = ?
-            `;
-
-            const exists = await MAIN.get(existsQuery, [this.username, skill]);
-            if (!exists) return AccountStatus.noSkill;
-
-            const query = `
-                DELETE FROM MemberSkills
-                WHERE username = ? AND skill = ?
-            `;
-
-            await MAIN.run(query, [this.username, skill]);
-            return AccountStatus.skillRemoved;
-        }));
-    }
-
-    async getSkills(): Promise<string[]> {
-        const query = `
-            SELECT * FROM MemberSkills
-            WHERE username = ?
-        `;
-
-        const data = await MAIN.all(query, [this.username]);
-        return data.map((d: { skill: string }) => d.skill);
-    }
 
 
 
+    async getPermissions(): Promise<any> {
+        // const roles = await this.getRoles();
 
+        // let perms = roles.reduce((acc, role) => {
+        //     acc.permissions.push(...role.permissions);
+        //     acc.rank = Math.min(acc.rank, role.rank);
+        //     return acc;
+        // }, {
+        //     permissions: [],
+        //     rank: Infinity
+        // } as PermissionsObject);
 
-    async getPermissions(): Promise<PermissionsObject> {
-        const roles = await this.getRoles();
+        // perms.permissions = perms.permissions
+        //     .filter((p, i) => perms.permissions.indexOf(p) === i); // Remove duplicates
 
-        let perms = roles.reduce((acc, role) => {
-            acc.permissions.push(...role.permissions);
-            acc.rank = Math.min(acc.rank, role.rank);
-            return acc;
-        }, {
-            permissions: [],
-            rank: Infinity
-        } as PermissionsObject);
-
-        perms.permissions = perms.permissions
-            .filter((p, i) => perms.permissions.indexOf(p) === i); // Remove duplicates
-
-        return perms;
+        // return perms;
     }
 
 
@@ -751,7 +564,7 @@ export default class Account {
             WHERE username = ?        
         `;
 
-        await MAIN.run(query, [to, this.username]);
+        await MAIN.unsafe.run(query, [to, this.username]);
 
         this[property] = to;
 
@@ -760,20 +573,10 @@ export default class Account {
 
 
     async changeUsername(username: string): Promise<AccountStatus> {
-        const findQuery = `
-            SELECT * FROM Accounts
-            WHERE username = ?
-        `;
+        const a = await Account.fromUsername(username);
+        if (a) return AccountStatus.usernameTaken;
 
-        if (await MAIN.get(findQuery, [username])) return AccountStatus.usernameTaken;
-
-        const query = `
-            UPDATE Accounts
-            SET username = ?
-            WHERE username = ?
-        `;
-
-        await MAIN.run(query, [username, this.username]);
+        await MAIN.run('change-username', [username, this.username]);
 
         this.username = username;
 
@@ -792,27 +595,16 @@ export default class Account {
 
 
     async changeEmail(email: string) {
-        const existsQuery = `
-            SELECT * FROM Accounts
-            WHERE email = ?
-        `;
-
-        const exists = await MAIN.get(existsQuery, [email]);
+        const exists = await Account.fromEmail(email);
 
         if (exists) return AccountStatus.emailTaken;
-
-        const query = `
-            UPDATE Accounts
-            SET emailChange = ?
-            WHERE username = ?
-        `;
 
         this.emailChange = {
             email,
             date: Date.now()
         }
 
-        MAIN.run(query, [
+        MAIN.run('request-email-change', [
             JSON.stringify(this.emailChange),
             this.username
         ]);
@@ -826,13 +618,7 @@ export default class Account {
         const key = uuid();
         this.passwordChange = key;
 
-        const query = `
-            UPDATE Accounts
-            SET passwordChange = ?
-            WHERE username = ?
-        `;
-
-        await MAIN.run(query, [key, this.username]);
+        await MAIN.run('request-password-change', [key, this.username]);
         return key;
     }
 
@@ -840,49 +626,11 @@ export default class Account {
         if (key !== this.passwordChange) return AccountStatus.passwordChangeInvalid;
 
         const { salt, key: newKey } = Account.newHash(password);
-
-        const query = `
-            UPDATE Accounts
-            SET key = ?, salt = ?, passwordChange = ?
-            WHERE username = ?
-        `;
-
-        await MAIN.run(query, [newKey, salt, null, this.username]);
+        await MAIN.run('change-password', [newKey, salt, null, this.username]);
         this.key = newKey;
         this.salt = salt;
         this.passwordChange = null;
 
         return AccountStatus.passwordChangeSuccess;
-    }
-
-
-
-    async changeBio(bio: string) {
-        if (!Account.valid(bio, [' '])) return AccountStatus.invalidBio;
-
-        const query = `
-            UPDATE MemberInfo
-            SET bio = ?
-            WHERE username = ?
-        `;
-
-        await MAIN.run(query, [bio, this.username]);
-
-        return AccountStatus.success;
-    }
-
-
-    async changeTitle(title: string) {
-        if (!Account.valid(title, [' '])) return AccountStatus.invalidTitle;
-
-        const query = `
-            UPDATE MemberInfo
-            SET title = ?
-            WHERE username = ?
-        `;
-
-        await MAIN.run(query, [title, this.username]);
-
-        return AccountStatus.success;
     }
 };

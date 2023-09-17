@@ -3,7 +3,6 @@ import { DB, MAIN } from '../server-functions/databases';
 import * as path from 'path';
 import * as fs from 'fs';
 import { config } from 'dotenv';
-import ts from 'typescript';
 import { spawn } from 'child_process';
 
 enum Colors {
@@ -100,7 +99,9 @@ const getJSON = (file: string): any => {
 
 // make files and folders if they don't exist
 const folders: string[] = [
-    '../history'
+    '../db',
+    '../db/queries',
+    '../db/history'
 ];
 
 
@@ -111,10 +112,11 @@ for (const folder of folders) {
     }
 }
 
-if (!fs.existsSync(path.resolve(__dirname, '../history/manifest.txt'))) {
-    fs.writeFileSync(path.resolve(__dirname, '../history/manifest.txt'), JSON.stringify({
+if (!fs.existsSync(path.resolve(__dirname, '../db/history/manifest.txt'))) {
+    fs.writeFileSync(path.resolve(__dirname, '../db/history/manifest.txt'), JSON.stringify({
         lastUpdate: Date.now(),
-        updates: []
+        updates: [],
+        version: '0.0.1'
     }, null, 4));
 }
 
@@ -178,6 +180,7 @@ type Table = {
     },
     rows: [],
     description: string;
+    type: 'linking' | 'data';
 }
 
 
@@ -192,7 +195,7 @@ async function createTable(tableName: string, table: Table): Promise<TableStatus
         );
     `;
 
-    await MAIN.run(makeTableQuery);
+    await MAIN.unsafe.run(makeTableQuery);
 
     if (!columns) return TableStatus.NO_COLUMNS;
 
@@ -202,7 +205,7 @@ async function createTable(tableName: string, table: Table): Promise<TableStatus
         PRAGMA table_info("${tableName}");
     `;
 
-    const pragmaResult = await MAIN.all(pragmaQuery);
+    const pragmaResult = await MAIN.unsafe.all(pragmaQuery);
 
     await Promise.all(Object.entries(columns).map(([columnName, {init}]) => {
         const columnExists = pragmaResult.find(({ name }) => name === columnName);
@@ -214,7 +217,7 @@ async function createTable(tableName: string, table: Table): Promise<TableStatus
             ADD COLUMN "${columnName}" ${init}
         `;
 
-        return MAIN.run(query);
+        return MAIN.unsafe.run(query);
     }));
 
     if (!rows) return TableStatus.SUCCESS;
@@ -224,7 +227,41 @@ async function createTable(tableName: string, table: Table): Promise<TableStatus
         const primaryKey = Object.keys(columns).find(columnName => columns[columnName].primaryKey);
 
         if (!primaryKey) {
-            log(`Table ${tableName} does not have a primary key, cannot insert row`);
+            // log(`Table ${tableName} does not have a primary key, it is likely a linking table`);
+
+            const columnsArray = Object.keys(table.columns);
+
+            const { type } = table;
+            if (type === 'linking') {
+                // log(`Table ${tableName} is a linking table, checking to see if row exists...`)
+
+                const selectQuery = `
+                    SELECT ${columnsArray.map(c => `"${c}"`).join(', ')}
+                    FROM "${tableName}"
+                    WHERE ${columnsArray.map(c => `"${c}" = ?`).join(' AND ')}
+                `;
+
+                const result = await MAIN.unsafe.get(selectQuery, columnsArray.map(c => row[c]));
+
+                if (!result) {
+                    log(`Row does not exist in table ${tableName}, inserting row...`);
+                    const insertQuery = `
+                        INSERT INTO "${tableName}" (${columnsArray.map(c => `"${c}"`).join(', ')})
+                        VALUES (${columnsArray.map(() => '?').join(', ')})
+                    `;
+
+                    await MAIN.unsafe.run(insertQuery, columnsArray.map(c => {
+                        const { type } = columns[c];
+
+                        if (type === 'json') return JSON.stringify(row[c]);
+                        return row[c];
+                    }));
+                } else {
+                    // log(`Row already exists in table ${tableName}, skipping...`);
+                }
+            }
+
+
             return;
         }
 
@@ -234,7 +271,7 @@ async function createTable(tableName: string, table: Table): Promise<TableStatus
             WHERE "${primaryKey}" = ?
         `;
 
-        const result = await MAIN.get(query, [row[primaryKey]]);
+        const result = await MAIN.unsafe.get(query, [row[primaryKey]]);
 
         if (result) {
             log(`Row with primary key ${row[primaryKey]} already exists in table ${tableName}, checking for updates...`);
@@ -246,14 +283,14 @@ async function createTable(tableName: string, table: Table): Promise<TableStatus
                     WHERE "${primaryKey}" = ?
                 `;
 
-                await MAIN.run(deleteQuery, [row[primaryKey]]);
+                await MAIN.unsafe.run(deleteQuery, [row[primaryKey]]);
 
                 const insertQuery = `
                     INSERT INTO "${tableName}" (${Object.keys(row).map(k => `"${k}"`).join(', ')})
                     VALUES (${Object.keys(row).map(() => '?').join(', ')})
                 `;
 
-                await MAIN.run(insertQuery, Object.keys(row).map(k => {
+                await MAIN.unsafe.run(insertQuery, Object.keys(row).map(k => {
                     const { type } = columns[k];
 
                     if (type === 'json') return JSON.stringify(row[k]);
@@ -270,7 +307,7 @@ async function createTable(tableName: string, table: Table): Promise<TableStatus
                 VALUES (${Object.keys(row).map(() => '?').join(', ')})
             `;
 
-            await MAIN.run(query, Object.keys(row).map(k => {
+            await MAIN.unsafe.run(query, Object.keys(row).map(k => {
                 const { type } = columns[k];
 
                 if (type === 'json') return JSON.stringify(row[k]);
@@ -283,55 +320,188 @@ async function createTable(tableName: string, table: Table): Promise<TableStatus
     return TableStatus.SUCCESS;
 }
 
+
+type ManifestUpdate = {
+    name: string;
+    date: number;
+    type: 'major' | 'minor' | 'patch';
+}
+
+
+
 type Manifest = {
     lastUpdate: number;
-    updates: {
-        name: string;
-        date: number;
-    }[];
+    updates: ManifestUpdate[];
+    version: string;
 }
+
+const manifestLocation = path.resolve(__dirname, '../db/history/manifest.txt');
+
+const getManifest = (): Manifest => JSON.parse(
+    fs.readFileSync(
+        manifestLocation, 'utf8')
+    ) as Manifest;
+
+const saveManifest = (manifest: Manifest) => fs.writeFileSync(
+    manifestLocation, JSON.stringify(manifest, null, 4)
+);
+
 
 // run database updates
 async function runUpdates(updates: Update[]) {
     log('Checking for database updates...');
 
-    const manifest = JSON.parse(
-        fs.readFileSync(
-            path.resolve(__dirname, "../history/manifest.txt"), 'utf8')
-        ) as Manifest;
+    const manifest = getManifest();
 
-    const { lastUpdate, updates: doneUpdates } = manifest;
+    const { lastUpdate, version, updates: completed } = manifest;
+
+    let [M, m, p] = (version || '0.0.1').split('.').map(Number);
 
     log('Last update:', new Date(lastUpdate).toLocaleString());
 
-    manifest.updates.push(...((await Promise.all(updates.map(async update => {
+    updates = updates.filter(u => {
+        const completedUpdate = completed.find(c => c.name === u.name);
+        if (!completedUpdate) return true;
+    });
+
+    if (updates.length) makeBackup(version);
+
+    for (const update of updates) {
         const { name, description, test, execute } = update;
 
+        // if the test is true, then the update has been run
         const result = await test(new DB('main'));
 
-        if (result) {
-            log(`Running update ${name}...`);
+        log('Result:', name, result);
+
+        if (!result) {
+            log(`Running update ${name} (${description})`);
             try {
                 await execute(new DB('main'));
+
+                switch (update.type) {
+                    case 'major':
+                        M++;
+                        m = 0;
+                        p = 0;
+                        break;
+                    case 'minor':
+                        m++;
+                        p = 0;
+                        break;
+                    case 'patch':
+                        p++;
+                        break;
+                }
+
             } catch (e) {
                 log(`Error running update ${name}:`, e);
-                return;
+                process.exit(1);
+                // stop running updates because if one fails, the database may get corrupted
             }
-            return {
-                name,
-                date: Date.now()
-            }
+        } else {
+            log(`Update ${name} passed the test but wasn't in the manifest, adding to manifest...`);
+            log('This only happens if the manifest was deleted, edited, or the database is a newer version than the manifest');
         }
-    }))).filter(Boolean) as { name: string, date: number }[]));
 
-    fs.writeFileSync(path.resolve(__dirname, "../history/manifest.txt"), JSON.stringify(manifest, null, 4));
+        manifest.updates.push({
+            name,
+            date: Date.now(),
+            type: update.type
+        });
+    }
+
+    manifest.lastUpdate = Date.now();
+    manifest.version = `${M}.${m}.${p}`;
+
+    saveManifest(manifest);
 }
 
+
+
+export async function revert(version: string) {
+    const updates = getUpdates();
+
+    const manifest = getManifest();
+    makeBackup(manifest.version);
+
+    const _updates = updates.slice();
+
+    let M = 0,
+        m = 0,
+        p = 1;
+    
+    for (const update of updates) {
+        switch (update.type) {
+            case 'major':
+                M++;
+                m = 0;
+                p = 0;
+                break;
+            case 'minor':
+                m++;
+                p = 0;
+                break;
+            case 'patch':
+                p++;
+                break;
+        }
+
+        _updates.shift(); // remove the earliest update
+        if (version === `${M}.${m}.${p}`) break;
+    }
+
+    for (const update of _updates.reverse()) {
+        try {
+            log('Reverting update:', update.name);
+            await update.revert(new DB('main'));
+        } catch (e) {
+            log('Error reverting update:', update.name);
+            log(e);
+            process.exit(1);
+            // stop reverting updates because if one fails, the database may get corrupted
+        }
+
+        manifest.updates.pop(); // remove the latest update
+    }
+
+    manifest.version = version;
+    manifest.lastUpdate = Date.now();
+
+    saveManifest(manifest);
+};
+
+function getUpdates(): Update[] {
+    const updates = fs.readdirSync(path.resolve(__dirname, './updates')).map(file => {
+        if (file.endsWith('.js')) {
+            file = file.replace('.js', '');
+            log('Imported update:', file);
+            return require('./updates/' + file).update as Update;
+        }
+    }).filter(Boolean) as Update[];
+
+    
+    // ensure all updates have a unique name
+    const names = updates.map(u => u.name);
+    const uniqueNames = [...new Set(names)];
+    if (names.length !== uniqueNames.length) {
+        error('All updates must have a unique name');
+        return [];
+    }
+
+    // ensure all updates are in order
+    updates.sort((a, b) => a.date - b.date);
+
+    return updates;
+}
+
+
+
 // generates a backup of the database
-function makeBackup() {
+function makeBackup(version: string) {
     log('Backing up database...');
 
-    const newDB = path.resolve(__dirname, '../history', `${Date.now()}.db`);
+    const newDB = path.resolve(__dirname, '../db/history', `${version}-${Date.now()}.db`);
 
     fs.copyFileSync(path.resolve(__dirname, '../db/main.db'), newDB);
 }
@@ -356,15 +526,15 @@ const daysTimeout = (cb: () => void, days: number) => {
 function setBackupIntervals() {
     log('Setting backup intervals...');
 
-    const files = fs.readdirSync(path.resolve(__dirname, '../history'));
+    const files = fs.readdirSync(path.resolve(__dirname, '../db/history'));
 
     for (const file of files) {
         if (file === 'manifest.txt') continue;
 
-        const p = path.resolve(__dirname, '../history', file);
+        const p = path.resolve(__dirname, '../db/history', file);
 
         const now = new Date();
-        const fileDate = new Date(parseInt(file.replace('.db', '')));
+        const fileDate = new Date(parseInt(file.split('-')[1].replace('.db', '')));
         const diff = now.getTime() - fileDate.getTime();
         const days = Math.floor(7 - (diff / (1000 * 60 * 60 * 24)));
 
@@ -417,13 +587,8 @@ export const serverUpdate = async () => {
         await runTs(path.resolve(__dirname, './updates'));
     } catch (e) {}
     
-    const updates: Update[] = fs.readdirSync(path.resolve(__dirname, './updates')).map(file => {
-        if (file.endsWith('.js')) {
-            file = file.replace('.js', '');
-            log('Imported update:', file);
-            return require('./tests' + file) as Update;
-        }
-    }).filter(Boolean) as Update[];
+    const updates: Update[] = getUpdates();
+
 
     function updateTests() {
         return runUpdates(updates);
@@ -434,8 +599,10 @@ export const serverUpdate = async () => {
     await runFunction(tableTest);
     await runFunction(updateTests);
 
-    if (args.includes('all') || args.includes('backup')) {
-        await runFunction(makeBackup);
+    if (args.includes('backup')) {
+        await runFunction(function backup() {
+            makeBackup(getManifest().version);
+        });
     }
 
     await runFunction(setBackupIntervals);
@@ -456,9 +623,12 @@ if (args.includes('main')) {
 }
 
 
-export type Update = {
+export interface Update {
     name: string;
     description: string;
     test: (database: DB) => Promise<boolean>;
     execute: (database: DB) => Promise<void>;
+    revert: (database: DB) => Promise<void>;
+    date: number;
+    type: 'major' | 'minor' | 'patch';
 }

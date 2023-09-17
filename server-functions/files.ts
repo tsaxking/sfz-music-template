@@ -8,10 +8,6 @@ import callsite from 'callsite';
 import { workerData } from 'worker_threads';
 import ObjectsToCsv from 'objects-to-csv';
 import { config } from 'dotenv';
-import { Status } from './structure/status';
-import { Session } from './structure/sessions';
-import { Server } from 'socket.io';
-import { SocketWrapper } from './structure/socket';
 
 
 
@@ -555,17 +551,6 @@ export function formatBytes(bytes: number, decimals: number = 2): { string: stri
 /**
  * Description placeholder
  *
- * @typedef {FileStreamOptions}
- */
-type FileStreamOptions = {
-    maxFileSize?: number;
-    extensions?: string[];
-}
-
-
-/**
- * Description placeholder
- *
  * @typedef {CustomHeaderRequest}
  */
 type CustomHeaderRequest = Request & {
@@ -590,90 +575,6 @@ type CustomResponse = Response & {
     json: (data: any) => void;
 }
 
-/**
- * Description placeholder
- *
- * @param {FileStreamOptions} opts
- * @returns {(req: any, res: any, next: any) => unknown}
- */
-export const fileStream = (opts?: FileStreamOptions): NextFunction => {
-    const fn = async(req: Request, res: Response, next: NextFunction) => {
-        let { maxFileSize, extensions } = opts || {};
-        extensions = extensions?.map(e => e.toLowerCase()) || [];
-        maxFileSize = maxFileSize || 1000000;
-
-        const generateFileId = () => {
-            return uuid() + '-' + Date.now();
-        }
-
-        let fileId = generateFileId();
-        let {
-            headers: {
-                'x-content-type': contentType,
-                'x-file-name': fileName,
-                'x-file-size': fileSize,
-                'x-file-type': fileType,
-                'x-file-ext': fileExt
-            }
-        } = req;
-
-        contentType = contentType as string || '';
-        fileName = fileName as string || '';
-        fileSize = fileSize as string || '';
-        fileType = fileType as string || '';
-        fileExt = fileExt as string || '';
-
-        if (maxFileSize && +fileSize > maxFileSize) {
-            console.log('File size is too large', formatBytes(+fileSize), formatBytes(maxFileSize));
-            return Status.from('files.tooLarge', req).send(res);
-        }
-
-        if (extensions && !extensions.includes(fileExt.toLowerCase())) {
-            console.log('File type is not allowed', fileExt, extensions);
-        }
-
-        if (!fileExt.startsWith('.')) fileExt = '.' + fileExt;
-
-
-        // never overwrite files
-        while (fs.existsSync(path.resolve(__dirname, '../uploads', fileId + fileExt))) {
-            fileId = generateFileId();
-        }
-
-        const file = fs.createWriteStream(path.resolve(__dirname, '../uploads', fileId + fileExt));
-
-        let total = 0;
-        req.on('data', (chunk) => {
-            file.write(chunk);
-            total += chunk.length;
-            console.log('Uploaded', formatBytes(total), formatBytes(+(fileSize || '')), `(${Math.round(total / +(fileSize || '') * 100)}% )`);
-        });
-
-        req.on('end', () => {
-            file.end();
-            req.file = {
-                id: fileId,
-                name: fileName as string || '',
-                size: +(fileSize as string) || 0,
-                type: fileType as string || '',
-                ext: fileExt as string || '',
-                contentType: contentType as string || '',
-                filename: fileId + fileExt
-            }
-            next();
-        });
-
-        req.on('error', (err) => {
-            console.log(err);
-
-            res.json({
-                error: 'Error uploading file: ' + fileName
-            })
-        });
-    }
-
-    return fn as unknown as NextFunction;
-}
 
 
 /**

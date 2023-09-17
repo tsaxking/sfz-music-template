@@ -432,8 +432,6 @@ const copyFile = async (filePath: string, streamName: string, index: number): Pr
 
             // filePath = filePath.replace('[ts]', '');
 
-            // log('Copying file:', filePath);
-
             // copy all files or folders from path
             await fsPromises.cp(
                 path.resolve(__dirname, filePath).replace('[ts]', ''),
@@ -463,6 +461,9 @@ export const buildServerFunctions = async (): Promise<void> => {
     return new Promise((res, rej) => {
         // tsc an entire directory using ts package
         try {
+            ts.createProgram([path.resolve(__dirname, '../server.ts')], {}).emit();
+
+
             const child = ChildProcess.spawn('tsc', [
                 '--build',
                 path.resolve(__dirname, '../server-functions/tsconfig.json')
@@ -495,6 +496,7 @@ const buildInit = async(streamName: string, buildStream: BuildStream): Promise<v
             '.min' + path.extname(streamName)
         );
 
+    // log('Building stream:', streamName);
 
     const {
         files
@@ -516,11 +518,11 @@ const buildInit = async(streamName: string, buildStream: BuildStream): Promise<v
             .then(makeStreamDir)
             .catch(makeStreamDir)
     ]);
-    log('Building stream:', streamName, files);
 
     await Promise.all(
         Object.entries(files)
             .map(async ([index, file]) => {
+                // log('Copying file:', file);
                 if (file.includes('--ignore-build')) return;
                 if (file.includes('http')) {
                     if (!file.includes('--force')) {
@@ -868,7 +870,7 @@ export const onFileChange = async (filename: string, env: string) => {
                         case '.css':
                             // find each file
                             replaceContent = await fsPromises.readFile(
-                                path.resolve(__dirname, '../static/build/dir-' + streamName.replace('.', '-'), folder, dirPath, basename),
+                                path.resolve(__dirname, '../static/build/dir-' + streamName.replace('.', '-'), folder, basename),
                                 'utf8'
                             );
                             fileContent = await fsPromises.readFile(
@@ -879,7 +881,7 @@ export const onFileChange = async (filename: string, env: string) => {
                         case '.sass':
                         case '.scss':
                             replaceContent = await fsPromises.readFile(
-                                path.resolve(__dirname, '../static/build/dir-' + streamName.replace('.', '-'), folder, dirPath, basename.replace(path.extname(basename), '.css')),
+                                path.resolve(__dirname, '../static/build/dir-' + streamName.replace('.', '-'), folder, basename.replace(path.extname(basename), '.css')),
                                 'utf8'
                             );
                             fileContent = await fromSass(filename);
@@ -900,7 +902,7 @@ export const onFileChange = async (filename: string, env: string) => {
                                             __dirname,
                                             '../static/build/dir-' + streamName.replace('.', '-')
                                             + '/' + folder
-                                            + '/' + dirPath
+                                            // + '/' + dirPath
                                             + '/' + basename.replace(path.extname(basename), '.ts')
                                         )
                                     );                                

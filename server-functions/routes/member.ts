@@ -9,6 +9,7 @@ import { SocketWrapper } from '../structure/socket';
 import { EmailType } from '../structure/email';
 import { config } from 'dotenv';
 import { Member, MembershipProgress } from '../structure/member';
+import { fileStream } from '../stream';
 
 config(); // load .env variables
 
@@ -70,7 +71,7 @@ router.post('/request', async (req, res) => {
         return Status.from('account.notLoggedIn', req).send(res);
     }
 
-    Member.new(account);
+    Member.newMember(account);
     Status.from('member.requested', req, { username: account.username }).send(res);
     req.io.emit('member-requested', account.username);
     req.io.emit('member-status', account.username, MembershipProgress.pending);
@@ -140,5 +141,75 @@ router.post('/revoke', Account.allowPermissions('manageMembers'), async (req, re
 
 router.post('/get-members', async (req, res, next) => {
     const members = await Member.getMembers();
-    res.json(members.map(m => m.safe));
+    res.json(await Promise.all(members.map(m => m.safe())));
+});
+
+
+router.post('/change-bio', async (req, res) => {
+    const { username, bio } = req.body;
+
+    const m = await Member.get(username);
+    if (!m) return Status.from('member.memberNotFound', req).send(res);
+
+    await m.changeBio(bio);
+
+    Status.from('member.changeBio', req, { username }).send(res);
+
+    req.io.emit('change-bio', username, bio);
+});
+
+router.post('/change-title', async (req, res) => {
+    const { username, title } = req.body;
+
+    const m = await Member.get(username);
+    if (!m) return Status.from('member.memberNotFound', req).send(res);
+
+    await m.changeTitle(title);
+
+    Status.from('member.changeTitle', req, { username }).send(res);
+    req.io.emit('change-title', username, title);
+});
+
+router.post('/add-skill', async (req, res) => {
+    const { username, skill } = req.body;
+
+    const m = await Member.get(username);
+    if (!m) return Status.from('member.memberNotFound', req).send(res);
+
+    await m.addSkill(skill);
+
+    Status.from('member.addSkill', req, { username }).send(res);
+    req.io.emit('add-skill', username, skill);
+});
+
+router.post('/remove-skill', async (req, res) => {
+    const { username, skill } = req.body;
+
+    const m = await Member.get(username);
+    if (!m) return Status.from('member.memberNotFound', req).send(res);
+
+    await m.removeSkill(skill);
+
+    Status.from('member.removeSkill', req, { username }).send(res);
+    req.io.emit('remove-skill', username, skill);
+});
+
+router.post('/change-resume', fileStream({
+    maxFileSize: 1000000,
+    extensions: ['.pdf']
+}), async (req, res) => {
+    const { file } = req;
+    const { username } = req.body;
+
+    if (!file) {
+        return Status.from('file.invalidFile', req).send(res);
+    }
+
+    const m = await Member.get(username);
+    if (!m) return Status.from('member.memberNotFound', req).send(res);
+
+    await m.changeResume(file.id);
+
+    Status.from('member.changeResume', req, { username }).send(res);
+    req.io.emit('change-resume', username, file.id);
 });

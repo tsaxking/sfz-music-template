@@ -8,8 +8,6 @@ class AccountEditForm {
         firstName: CBS_Input;
         lastName: CBS_Input;
         picture: CBS_Input;
-        bio: CBS_Input;
-        title: CBS_Input;
     };
 
     public readonly collections: {
@@ -46,16 +44,6 @@ class AccountEditForm {
             picture: CBS.createElement('input-file', {
                 attributes: {
                     type: 'file'
-                }
-            }),
-            bio: CBS.createElement('input-textarea', {
-                attributes: {
-                    rows: '5'
-                }
-            }),
-            title: CBS.createElement('input', {
-                attributes: {
-                    type: 'text'
                 }
             })
         };
@@ -103,12 +91,6 @@ class AccountEditForm {
                         break;
                     case 'picture':
                         this.account.changePicture(input.value);
-                        break;
-                    case 'bio':
-                        this.account.member?.changeBio(input.value);
-                        break;
-                    case 'title':
-                        this.account.member?.changeTitle(input.value);
                         break;
                 }
             });
@@ -173,27 +155,6 @@ class AccountEditForm {
         );
 
         this.newUpdate(
-            'change-bio',
-            () => this.inputs.bio.value = this.account.member?.bio
-        );
-
-        this.newUpdate(
-            'change-title',
-            () => this.inputs.title.value = this.account.member?.title
-        );
-
-        this.newUpdate(
-            'add-skill',
-            (skill: string) => {
-                const { member } = this.account;
-                const el = this.collections.skills.addListElement(skill);
-                el.subcomponents.button.on('click', () => {
-                    this.account.member?.removeSkill(skill);
-                });
-            }
-        );
-
-        this.newUpdate(
             'add-role',
             () => {
                 const { roles } = this.account;
@@ -202,19 +163,6 @@ class AccountEditForm {
                 el.subcomponents.button.on('click', () => {
                     this.account.removeRole(role);
                 });
-            }
-        );
-
-        this.newUpdate(
-            'remove-skill',
-            (skill: string) => {
-                const { member } = this.account;
-
-                member?.skills.splice(member.skills.indexOf(skill), 1);
-                const el = this.collections.skills.collection[skill];
-                if (!el) return;
-
-                el.destroy();
             }
         );
 
@@ -235,6 +183,7 @@ class AccountEditForm {
     private newUpdate(name: string, callback: (...args: any[]) => void) {
         const update = new ViewUpdate(name, null, callback, this.account.filterUsername);
         this.viewUpdates.push(update);
+        return update;
     }
 
 
@@ -414,6 +363,11 @@ class Account {
         }
 
         if (memberInfo) {
+            console.log('account', 
+            {
+                ...memberInfo,
+                username: this.username
+            });
             this.member = new Member(
                 {
                     ...memberInfo,

@@ -78,34 +78,46 @@
             "key": "",
             "salt": "",
             "info": {},
-            "roles": [
-                "admin"
-            ],
             "firstName": "Admin",
             "lastName": "Account",
-            "email": ""
+            "email": "",
+            "verified": true
         }, {
             "username": "developer",
             "key": "",
             "salt": "",
             "info": {},
-            "roles": [
-                "developer"
-            ],
             "firstName": "Developer",
             "lastName": "Account",
-            "email": ""
+            "email": "",
+            "verified": true
         }, {
             "username": "user",
             "key": "",
             "salt": "",
             "info": {},
-            "roles": [
-                "user"
-            ],
             "firstName": "User",
             "lastName": "Account",
-            "email": ""
+            "email": "",
+            "verified": true
+        }, {
+            "username": "board",
+            "key": "",
+            "salt": "",
+            "info": {},
+            "firstName": "Board",
+            "lastName": "Account",
+            "email": "",
+            "verified": true
+        }, {
+            "username": "guest",
+            "key": "",
+            "salt": "",
+            "info": {},
+            "firstName": "Guest",
+            "lastName": "Account",
+            "email": "",
+            "verified": false
         }],
         "description": "All accounts in the system"
     },
@@ -171,7 +183,8 @@
                 "init": "years INTEGER NOT NULL"
             }
         },
-        "description": "Skills of each member"
+        "description": "Skills of each member",
+        "type": "linking"
     },
 
 
@@ -186,13 +199,6 @@
                 "edit": true,
                 "description": "The name of the role",
                 "init": "name TEXT NOT NULL UNIQUE"
-            },
-            "permissions": {
-                "type": "json",
-                "edit": true,
-                "description": "Additional information about the role",
-                "init": "info TEXT",
-                "default": "{}"
             },
             "description": {
                 "type": "string",
@@ -209,32 +215,22 @@
         },
         "rows": [{
             "name": "admin",
-            "permissions": [
-                "mangeMembers",
-                "manageBoard"
-            ],
             "description": "Administrator",
             "rank": 0
         }, {
             "name": "board",
-            "permissions": [
-                "mangeMembers"
-            ],
             "description": "Board",
             "rank": 20
         }, {
             "name": "member",
-            "permissions": [],
             "description": "Member",
             "rank": 30
         }, {
             "name": "developer",
-            "permissions": [],
             "description": "Developer",
             "rank": 10
         }, {
             "name": "user",
-            "permissions": [],
             "description": "User",
             "rank": 100
         }]
@@ -261,6 +257,7 @@
         }, {
             "username": "tsaxking",
             "role": "developer"
-        }]
+        }],
+        "type": "linking"
     }
 }

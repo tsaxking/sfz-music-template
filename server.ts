@@ -9,10 +9,11 @@ import { Worker, isMainThread, workerData, parentPort } from 'worker_threads';
 import { config } from 'dotenv';
 import './server-functions/declaration-merging/express.d.ts';
 import { Status } from './server-functions/structure/status';
-import { SocketWrapper } from './server-functions/structure/socket';
+import { SocketWrapper, initSocket } from './server-functions/structure/socket';
 import Account from './server-functions/structure/accounts';
 import { getTemplateSync, getJSON, LogType, log, getTemplate, getJSONSync } from './server-functions/files';
 import { Member } from './server-functions/structure/member';
+import { Colors } from './server-functions/colors';
 
 config();
 
@@ -48,47 +49,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-io.on('connection', (socket) => {
-    console.log('a user connected');
-    const s = Session.addSocket(socket);
-    if (!s) return;
-    // your socket code here
-
-    // ▄▀▀ ▄▀▄ ▄▀▀ █▄▀ ██▀ ▀█▀ ▄▀▀ 
-    // ▄█▀ ▀▄▀ ▀▄▄ █ █ █▄▄  █  ▄█▀ 
-
-
-    socket.on('ping', () => socket.emit('pong'));
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    socket.on('disconnect', () => {
-        // reconnect
-    });
-});
+initSocket(io);
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json({ limit: '50mb' }));
@@ -131,7 +92,7 @@ function stripHtml(body: any) {
 
     const remove = (str: string) => str.replace(/(<([^>]+)>)/gi, '');
 
-    const strip = (obj: any) => {
+    const strip = (obj: any): any => {
         switch (typeof obj) {
             case 'string':
                 return remove(obj);
@@ -158,17 +119,19 @@ function stripHtml(body: any) {
     return obj;
 }
 
+app.use(Session.middleware as NextFunction);
+
+app.use((req, res, next) => {
+    console.log(Colors.FgRed, `[${req.method}]`, Colors.Reset, req.originalUrl, Colors.FgYellow, req.session.account?.username || 'Not logged in', Colors.Reset);
+    next();
+});
+
 // logs body of post request
 app.post('/*', (req, res, next) => {
     req.body = stripHtml(req.body);
     console.log(req.body);
     next();
 });
-
-app.use(Session.middleware as NextFunction);
-
-
-
 // production/testing/development middleware
 
 
@@ -338,6 +301,7 @@ app.use('/404', (req, res) => {
 });
 
 import { router as MemberRouter } from './server-functions/routes/member';
+import Role from './server-functions/structure/roles';
 
 app.use('/member', MemberRouter);
 
@@ -424,7 +388,7 @@ const getBlankTemplate = (page: string): NextFunction => {
 
 app.get('/member/:page', Account.isSignedIn, Member.isMember, getBlankTemplate('member'));
 // app.get('/instructor/:page', Account.isSignedIn, getBlankTemplate('instructor'));
-app.get('/admin/:page', Account.allowRoles('admin'), getBlankTemplate('admin'));
+app.get('/admin/:page', Role.allowRoles('admin'), getBlankTemplate('admin'));
 // app.get('/student/:page', Account.isSignedIn, getBlankTemplate('student'));
 // app.get('/library/:page', Account.isSignedIn, getBlankTemplate('library'));
 

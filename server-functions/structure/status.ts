@@ -192,30 +192,30 @@ export class Status {
 
 
         // Send email to admins if error
-        if (status === ColorCode.majorError && process.env.SEND_STATUS_EMAILS === 'TRUE') {
-            Account.fromRole('admin')
-                .then(admins => {
-                    const email = new Email(
-                        admins.map(admin => admin.email),
-                        'Error: ' + title,
-                        EmailType.error,
-                        {
-                            constructor: {
-                                title,
-                                message,
-                                code,
-                                sessionId: request.session.id,
-                                username: request.session.account?.username,
-                                ip: request.session.ip,
-                                email: request.session.account?.email,
-                            }
-                        });
+        // if (status === ColorCode.majorError && process.env.SEND_STATUS_EMAILS === 'TRUE') {
+        //     Account.fromRole('admin')
+        //         .then(admins => {
+        //             const email = new Email(
+        //                 admins.map(admin => admin.email),
+        //                 'Error: ' + title,
+        //                 EmailType.error,
+        //                 {
+        //                     constructor: {
+        //                         title,
+        //                         message,
+        //                         code,
+        //                         sessionId: request.session.id,
+        //                         username: request.session.account?.username,
+        //                         ip: request.session.ip,
+        //                         email: request.session.account?.email,
+        //                     }
+        //                 });
 
-                    email.send()
-                        .catch(console.error);
-                })
-                .catch(console.error);
-        }
+        //             email.send()
+        //                 .catch(console.error);
+        //         })
+        //         .catch(console.error);
+        // }
     }
 
     get html() {

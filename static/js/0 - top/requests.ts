@@ -211,6 +211,6 @@ class ServerRequest {
             }
         }
 
-        CBS.alert(message);
+        return CBS.alert(message);
     }
 }

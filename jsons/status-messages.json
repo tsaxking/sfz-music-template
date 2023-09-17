@@ -374,12 +374,6 @@
     },
 
 
-
-
-
-
-
-
     // █▄ ▄█ ██▀ █▄ ▄█ ██▄ ██▀ █▀▄ ▄▀▀ 
     // █ ▀ █ █▄▄ █ ▀ █ █▄█ █▄▄ █▀▄ ▄█▀ 
 
@@ -391,9 +385,51 @@
         "instructions": "You will be redirected to the membership page",
         "redirect": "/member/become-member"
     },
+    "member.notFound": {
+        "title": "Membership",
+        "message": "Member not found",
+        "status": "error",
+        "code": 404,
+        "instructions": ""
+    },
     "member.requested": {
         "title": "Membership",
         "message": "Your membership has been requested",
+        "status": "success",
+        "code": 200,
+        "instructions": ""
+    },
+    "member.changeBio": {
+        "title": "Membership",
+        "message": "Your bio has been updated",
+        "status": "success",
+        "code": 200,
+        "instructions": ""
+    },
+    "member.changeTitle": {
+        "title": "Membership",
+        "message": "Your title has been updated",
+        "status": "success",
+        "code": 200,
+        "instructions": ""
+    },
+    "member.addSkill": {
+        "title": "Membership",
+        "message": "Your skill has been added",
+        "status": "success",
+        "code": 200,
+        "instructions": ""
+    },
+    "member.removeSkill": {
+        "title": "Membership",
+        "message": "Your skill has been removed",
+        "status": "success",
+        "code": 200,
+        "instructions": ""
+    },
+    "member.changeResume": {
+        "title": "Membership",
+        "message": "Your resume has been updated",
         "status": "success",
         "code": 200,
         "instructions": ""

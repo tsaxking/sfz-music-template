@@ -77,8 +77,7 @@ const newServer = async () => {
         setTitle(`🎷 [${env}] sfzMusic Server`);
         console.log('---------------------------------------------');
         log('Starting server...');
-        log('Run "dev", "test", or "prod" to change modes');
-        log('Run "rs", or save a file to restart server');
+        log('Run "help" to view available commands');
         log('Listening for .ts and .json file changes...');
         console.log('---------------------------------------------');
 
@@ -91,7 +90,8 @@ const newServer = async () => {
             workerData: {
                 mode: process.argv[2],
                 args: [env, process.argv.slice(3)],
-                builds: renderedBuilds
+                builds: renderedBuilds,
+                io: undefined
             }
         });
 
@@ -461,12 +461,26 @@ process.on('unhandledRejection', exit);
             },
             script: {
                 description: 'Runs a script from the ./scripts directory. Example: "script test"',
-                fn: async (script: string) => {
+                fn: async (script: string, ...args: string[]) => {
                     log("Running script:", script);
 
                     await new Promise((res, rej) => {
+                        // const worker = new Worker(
+                        //     path.resolve(__dirname, './scripts/main.js'),
+                        //     {
+                        //         workerData: {
+                        //             script,
+                        //             args,
+                        //             env
+                        //         }
+                        //     }
+                        // )
 
-                        const child = spawn('npm run script ' + script, {
+
+
+
+
+                        const child = spawn('npm run script ' + script + ' ' + args.join(' '), {
                             cwd: __dirname,
                             env: process.env,
                             stdio: 'pipe',

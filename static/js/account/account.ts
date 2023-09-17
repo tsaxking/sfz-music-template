@@ -9,7 +9,7 @@ ServerRequest
         memberInfo,
         roles
     }) => {
-        Account.current = new Account(username, email, firstName, lastName, picture, memberInfo, roles);
+        Account.current = new Account(username, email, firstName, lastName, picture, roles, memberInfo);
     });
 
 

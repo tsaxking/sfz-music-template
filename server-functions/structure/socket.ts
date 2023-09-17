@@ -1,5 +1,7 @@
-import { Socket } from "socket.io";
+import { Server, Socket } from "socket.io";
 import { parseCookie } from "./cookie";
+import { Session } from "./sessions";
+import { workerData, isMainThread, parentPort } from "worker_threads";
 
 type SocketMetadata = {
     time: number;
@@ -78,3 +80,51 @@ export class SocketWrapper {
         }
     }
 }
+
+
+export var io: Server|null = null;
+
+export const initSocket = (server: Server) => {
+    io = server;
+    io.on('connection', (socket) => {
+        console.log('a user connected');
+        const s = Session.addSocket(socket);
+        if (!s) return;
+        // your socket code here
+    
+        // ▄▀▀ ▄▀▄ ▄▀▀ █▄▀ ██▀ ▀█▀ ▄▀▀ 
+        // ▄█▀ ▀▄▀ ▀▄▄ █ █ █▄▄  █  ▄█▀ 
+    
+    
+        socket.on('ping', () => socket.emit('pong'));
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+        socket.on('disconnect', () => {
+            // reconnect
+        });
+    });
+};
