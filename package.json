@@ -25,6 +25,7 @@
     "@gerhobbelt/gitignore-parser": "github:gerhobbelt/gitignore-parser",
     "@google-cloud/local-auth": "^2.1.1",
     "@total-typescript/ts-reset": "^0.4.2",
+    "@types/chart.js": "^2.9.38",
     "@types/node": "^20.3.2",
     "@types/request-ip": "^0.0.38",
     "@types/uuid": "^9.0.1",

@@ -1,13 +1,28 @@
+enum MembershipStatus {
+    pending = 'pending',
+    accepted = 'accepted',
+    rejected = 'rejected',
+    notMember = 'notMember',
+    notAllowed = 'notAllowed',
+    twicePending = 'twicePending'
+}
+
+
+
 type MemberInfo = {
     username: string;
     bio: string;
     title: string;
     resume: string|null;
     status: MembershipStatus;
-    skills: string[];
+    skills: Skill[];
 }
 
 
+type Skill = {
+    skill: string;
+    years: number;
+}
 
 class Member {
     static members: { [username: string]: Member } = {};
@@ -30,9 +45,7 @@ class Member {
     public title: string;
     public resume?: PDF;
     public status: MembershipStatus;
-    public skills: string[];
-
-    private viewUpdates: ViewUpdate[] = [];
+    public skills: Skill[];
 
     constructor(memberInfo: MemberInfo) {
         this.username = memberInfo.username;
@@ -47,9 +60,20 @@ class Member {
         Member.members[this.username] = this;
     }
 
-    filterUsername(username: string) {
+    public filterUsername(username: string) {
+        console.log('filter:', username, this.username);
         return this.username.toLowerCase() === username.toLowerCase();
     }
+
+
+
+
+
+
+    get account(): Account {
+        return Account.accounts[this.username];
+    }
+
 
 
     // changes
@@ -69,8 +93,9 @@ class Member {
         });
     }
 
-    async addSkill(skill: string) {
+    async addSkill(skill: string, years: number) {
         return ServerRequest.post('/member/add-skill', {
+            years,
             username: this.username,
             skill
         });
@@ -96,29 +121,90 @@ class Member {
 
     // TODO: create member profile view
     async view(): Promise<CBS_Container> {
+        const updates: ViewUpdate[] = [];
+
+        const newUpdate = (name: string, callback: (...args: any[]) => void) => {
+            const u = this.newUpdate(name, callback);
+            updates.push(u);
+        }
+
         const container = CBS.createElement('container');
 
         container.addRow().append(CBS.createElement('h4').append(`${this.username}'s Profile`));
 
-        container.addRow().append(CBS.createElement('h6').append('Bio'));
-        container.addRow().append(CBS.createElement('p').append(this.bio || 'No bio yet'));
+        container.addRow().append(CBS.createElement('h6', {
+            classes: ['fw-bold']
+        }).append('Bio'));
+        const bio = CBS.createElement('p').append(this.bio || 'No bio yet')
+        container.addRow().append(bio);
+        newUpdate(
+            'change-bio',
+            () => {
+                bio.clearElements();
+                bio.append(this.bio || 'No bio yet');
+            }
+        );
 
-        container.addRow().append(CBS.createElement('h6').append('Title'));
-        container.addRow().append(CBS.createElement('p').append(this.title || 'No title yet'));
+        container.addRow().append(CBS.createElement('h6', {
+            classes: ['fw-bold']
+        }).append('Title'));
+        const title = CBS.createElement('p').append(this.title || 'No title yet');
+        container.addRow().append(title);
+        newUpdate(
+            'change-title',
+            () => {
+                title.clearElements();
+                title.append(this.title || 'No title yet');
+            }
+        );
+        
 
-        container.addRow().append(CBS.createElement('h6').append('Skills'));
+        container.addRow().append(CBS.createElement('h6', {
+            classes: ['fw-bold']
+        }).append('Skills'));
+        const skillArr: CBS_ListItem[] = [];
         const skills = CBS.createElement('list');
 
-        for (const skill of this.skills) {
+        const newSkill = (skill: string, years: number): CBS_ListItem => {
             const li = CBS.createElement('li');
-            li.append(skill);
-            skills.append(li);
+            li.id = 'skill-' + skill.replace(' ', '-').toLowerCase();
+            li.append(`[${years}]   ` + capitalize(skill));
+            skillArr.push(li);
+            return li;
+        } 
+
+        for (const skill of this.skills) {
+            skills.append(newSkill(skill.skill, skill.years));
         }
         container.addRow().append(skills);
 
-        container.addRow().append(CBS.createElement('h6').append('Resume'));
+        newUpdate(
+            'add-skill',
+            (username: string, skill: string, years: number) => {
+                console.log('add-skill', username, skill);
+                skills.append(newSkill(skill, years));
+            }
+        );
+
+        newUpdate(
+            'remove-skill',
+            (username: string, skill: string) => {
+                const s = skillArr.find(s => s.id === 'skill-' + skill.replace(' ', '-').toLowerCase());
+                if (s) s.destroy();
+            }
+        )
+
+        container.addRow().append(CBS.createElement('h6', {
+            classes: ['fw-bold']
+        }).append('Resume'));
         const canvas = document.createElement('canvas');
         container.addRow().append((await this.resume?.viewer(canvas)) || 'No resume uploaded');
+
+
+
+        container.on('el.destroy', () => {
+            updates.forEach(u => u.destroy());
+        });
 
 
         return container;
@@ -126,108 +212,122 @@ class Member {
 
     // TODO: create member management view
     manage(): CBS_Container {
-        const manageUpdates: ViewUpdate[] = [];
+        const updates: ViewUpdate[] = [];
+        const container = CBS.createElement('container');
 
         const newUpdate = (name: string, callback: (...args: any[]) => void) => {
             const u = this.newUpdate(name, callback);
-            manageUpdates.push(u);
+            updates.push(u);
+        }
+
+        const createInputGroup = (label: 'resume'| 'bio' | 'skill' | 'title', inputs: CBS_Input[], reset: boolean = false) => {
+            const formGroup = CBS.createElement('div');
+            formGroup.addClass('form-group', 'mb-3', 'w-100', 'pe-2');
+            const labelEl = CBS.createElement('label', {
+                classes: ['fw-bold']
+            }).append(capitalize(label));
+            const button = CBS.createElement('button', {
+                color: 'primary'
+            }).append(`<i class="material-icons">save</i>`);
+
+            
+            const inputGroup = CBS.createElement('input-group');
+            inputs.forEach(i => inputGroup.append(i));
+            inputGroup.append(button);
+
+            formGroup.append(labelEl, inputGroup);
+
+            button.on('click', () => {
+                switch (label) {
+                    case 'resume':
+                        this.changeResume((inputs[0] as CBS_FileInput).value[0]).then(() => {
+                            (inputs[0] as CBS_FileInput).clearFiles();
+                        });
+                        break;
+                    case 'bio':
+                        this.changeBio((inputs[0] as CBS_Input).value);
+                        break;
+                    case 'title':
+                        this.changeTitle((inputs[0] as CBS_Input).value);
+                        break;
+                    case 'skill':
+                        this.addSkill((inputs[0] as CBS_Input).value, +(inputs[1] as CBS_Input).value);
+                        break;
+                }
+                if (reset) {
+                    inputs.forEach(i => i.value = '');
+                }
+            });
+            container.addRow().append(formGroup);
+
+            if (label === 'resume' || label === 'skill') return;
+
+
+            inputs[0].value = this[label];
+
+            newUpdate(
+                'change-' + label,
+                (username, value) => {
+                    inputs.forEach(i => i.value = value);
+                }
+            );
+
         }
 
 
-        const container = CBS.createElement('container');
+        const bioInput = CBS.createElement('input-textarea');
+        bioInput.setAttribute('placeholder', 'Type your bio here');
+        createInputGroup('bio', [bioInput]);
 
-        const bioInput = CBS.createElement('input-label-save', {
-            clear: false
-        });
-        bioInput.subcomponents.container.label.append('Bio');
-        bioInput.subcomponents.container.addClass('w-100', 'pe-2');
-        bioInput.input = CBS.createElement('input-textarea');
-        bioInput.input.value = this.bio;
-        bioInput.on('input.save', () => {
-            this.changeBio(bioInput.input.value);
-        });
-        container.addRow().append(bioInput);
-
-        newUpdate(
-            'change-bio', 
-            () => bioInput.value = this.bio
-        );
+        const titleInput = CBS.createElement('input');
+        titleInput.setAttribute('placeholder', 'Type your title here');
+        createInputGroup('title', [titleInput]);
 
 
-        const titleInput = CBS.createElement('input-label-save', {
-            clear: false
-        });
-        titleInput.subcomponents.container.label.append('Title');
-        titleInput.subcomponents.container.addClass('w-100', 'pe-2');
-        titleInput.input = CBS.createElement('input');
-        titleInput.input.value = this.title;
-        titleInput.on('input.save', () => {
-            this.changeTitle(titleInput.input.value);
-        });
-        container.addRow().append(titleInput);
-
-        newUpdate(
-            'change-title', 
-            () => titleInput.value = this.title
-        );
-
-
-        const addSkillLabel = (row: CBS_Row, skill: string) => {
+        const addSkillLabel = (row: CBS_Row, skill: string, years: number) => {
             const div = CBS.createElement('div');
             div.addClass('d-flex', 'justify-content-between', 'align-items-center');
 
             const remove = CBS.createElement('button', {
-                color: 'danger'
-            }).append('Remove').on('click', () => {
-                this.removeSkill(skill).then(() => {
-                    div.destroy();
+                    color: 'danger'
+                })
+                .append(`<i class="material-icons">close</i>`)
+                .on('click', () => {
+                    this.removeSkill(skill).then(() => {
+                        div.destroy();
+                    });
                 });
-            });
 
-            div.append(CBS.createElement('p').append(skill), remove);
+            div.append(CBS.createElement('p', {
+                classes: ['m-0', 'p-0']
+            }).append(remove, '&nbsp;' +  capitalize(skill) + `  (${years})`));
             row.addCol().append(div);
         }
 
         const skillsRow = container.addRow();
-        this.skills.forEach(s => addSkillLabel(skillsRow, s));
+        if (this.skills.length) skillsRow.append(CBS.createElement('h6', {
+            classes: ['fw-bold']
+        }).append('Skills'));
+        this.skills.forEach(s => addSkillLabel(skillsRow, s.skill, s.years));
 
         newUpdate(
             'add-skill',
-            (username: string, skill: string) => addSkillLabel(skillsRow, skill)
+            (username: string, skill: string, years: number) => addSkillLabel(skillsRow, skill, years)
         )
 
+        const skillInput = CBS.createElement('input');
+        skillInput.setAttribute('placeholder', 'Skill name');
+        const yearInput = CBS.createElement('input');
+        yearInput.setAttribute('placeholder', 'Years of experience');
 
+        createInputGroup('skill', [skillInput, yearInput], true);
 
-        const addSkillInput = CBS.createElement('input-label-save', {
-            clear: false
-        });
-        addSkillInput.subcomponents.container.label.append('Add Skill');
-        addSkillInput.subcomponents.container.addClass('w-100', 'pe-2');
-        addSkillInput.input = CBS.createElement('input');
-        addSkillInput.on('input.save', () => {
-            this.addSkill(addSkillInput.input.value).then(() => {
-                addSkillLabel(skillsRow, addSkillInput.input.value);
-                addSkillInput.input.value = '';
-            });
-        });
-        container.addRow().append(addSkillInput);
-        
-        const addResumeInput = CBS.createElement('input-label-save', {
-            clear: false
-        });
-        addResumeInput.subcomponents.container.label.append('Resume');
-        addResumeInput.input = CBS.createElement('input-file');
-        addResumeInput.subcomponents.container.addClass('w-100', 'pe-2');
-        (addResumeInput.input as CBS_FileInput).accept = ['.pdf'];
-        addResumeInput.on('input.save', () => {
-            this.changeResume((addResumeInput.input as CBS_FileInput).value[0]).then(() => {
-                addResumeInput.input.value = '';
-            });
-        });
-        container.addRow().append(addResumeInput);
+        const resumeInput = CBS.createElement('input-file');
+        createInputGroup('resume', [resumeInput]);
+
 
         container.on('el.destroy', () => {
-            manageUpdates.forEach(u => u.destroy());
+            updates.forEach(u => u.destroy());
         });
 
 
@@ -239,7 +339,7 @@ class Member {
 
 
 
-    async modal(): Promise<CBS_Modal> {
+    async viewManageModal(): Promise<CBS_Modal> {
         const container = CBS.createElement('container');
         const nav = CBS.createElement('tab-nav');
         nav.addClass('nav-tabs');
@@ -260,12 +360,48 @@ class Member {
         return modal;
     }
 
+    async viewModal(): Promise<CBS_Modal> {
+        const container = CBS.createElement('container');
 
+        const profile = await this.view();
 
+        container.addRow().append(profile);
 
-    
-    private newUpdate(name: string, callback: (...args: any[]) => void) {
-        const update = new ViewUpdate(name, null, callback, this.filterUsername);
+        const modal = CBS.modal(container, {
+            title: 'Member',
+            size: 'xl',
+            destroyOnHide: true
+        });
+
+        return modal;
+    }
+
+    async manageModal(): Promise<CBS_Modal> {
+        const container = CBS.createElement('container');
+
+        const manage = this.manage();
+
+        container.addRow().append(manage);
+
+        const modal = CBS.modal(container, {
+            title: 'Member',
+            size: 'xl',
+            destroyOnHide: true
+        });
+
+        return modal;
+    }
+
+    private newUpdate(event: string, callback: (...args: any[]) => void) {
+        const update = new ViewUpdate(event, null, callback, (username) => this.filterUsername(username));
         return update;
+    }
+
+
+
+    async addToBoard() {
+        return ServerRequest.post('/member/add-to-board', {
+            username: this.username
+        });
     }
 }

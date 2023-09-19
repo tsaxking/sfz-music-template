@@ -9,14 +9,19 @@ class M_Dashboard extends Page {
         row.addCell(member.title || '');
         row.addCell(member.status || '');
     
-        row.on('click', () => member.modal());
+        row.on('click', () => {
+            if (member.username === Account.current.username) {
+                member.viewManageModal();
+            } else {
+                member.viewModal();
+            }
+        });
     }
-
-
 }
 
 const memberDashboard = new M_Dashboard('Dashboard', true);
 
+memberDashboard.dom.append(CBS.createElement('h3').append('sfzMusic Members:'));
 
 
 const memberTableContainer = CBS.createElement('div', {

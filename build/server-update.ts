@@ -101,7 +101,8 @@ const getJSON = (file: string): any => {
 const folders: string[] = [
     '../db',
     '../db/queries',
-    '../db/history'
+    '../db/history',
+    '../uploads'
 ];
 
 

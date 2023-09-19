@@ -13,7 +13,17 @@ ServerRequest
     });
 
 
-
+socket.on('new-account', (a) => {
+    new Account(
+        a.username,
+        a.email,
+        a.firstName,
+        a.lastName,
+        a.picture,
+        a.memberInfo,
+        a.roles
+    );
+});
 
 
 socket.on('change-username',
@@ -57,12 +67,31 @@ socket.on('change-picture',
 );
 
 socket.on('add-skill',
-    (username: string, skill: string) => {
-        const a = Account.accounts[username];
-        if (!a) return;
-        a.member?.skills.push(skill);
+    (username: string, skill: string, years: number) => {
+        Member.members[username]?.skills.push({
+            skill,
+            years
+        });
     }
 );
+
+socket.on('change-bio', (username: string, bio: string) => {
+    const m = Member.members[username];
+    if (!m) return;
+    m.bio = bio;
+});
+
+socket.on('change-title', (username: string, title: string) => {
+    const m = Member.members[username];
+    if (!m) return;
+    m.title = title;
+});
+
+socket.on('change-resume', (username: string, resume: string) => {
+    const a = Account.accounts[username];
+    if (!a) return;
+    a.member!.resume = new PDF(resume, username + "'s resume");
+});
 
 socket.on('add-role',
     (username: string, role: string) => {
@@ -74,9 +103,10 @@ socket.on('add-role',
 
 socket.on('remove-skill',
     (username: string, skill: string) => {
-        const a = Account.accounts[username];
-        if (!a) return;
-        a.member?.skills.splice(a.member.skills.indexOf(skill), 1);
+        const s = Member.members[username]?.skills.find(s => s.skill === skill);
+        if (!s) return;
+
+        Member.members[username]?.skills.splice(Member.members[username]?.skills.indexOf(s), 1);
     }
 );
 

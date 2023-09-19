@@ -20,7 +20,7 @@ export const main = async () => {
     
     
     
-    `;
+`;
     
             fs.writeFileSync(
                 path.resolve(__dirname, '../db/queries', dir, f),

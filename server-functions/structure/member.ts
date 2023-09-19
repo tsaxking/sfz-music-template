@@ -11,6 +11,12 @@ import { io } from "../structure/socket";
 import { deleteUpload } from "../files";
 
 
+type Skill = {
+    skill: string;
+    years: number;
+}
+
+
 declare global {
     namespace Express {
         interface Request {
@@ -67,6 +73,23 @@ export class Member {
     public static members: {
         [username: string]: Member
     } = {};
+
+    static async canManage(req: Request, res: Response, next: NextFunction) {
+        const { username } = req.body;
+        const self = req.session.account;
+        if (!self) return Status.from('account.notLoggedIn', req).send(res);
+        if (self.username === username) return next(); // can manage self
+
+        const account = await Account.fromUsername(username);
+        if (!account) return Status.from('account.notFound', req).send(res);
+
+        const selfRank = await self.getRank();
+        const rank = await account.getRank();
+
+        if (selfRank < rank) return next();
+
+        Status.from('member.cannotManage', req).send(res);
+    }
 
     static async isMember(req: Request, res: Response, next: NextFunction) {
         const { account } = req.session;
@@ -281,9 +304,8 @@ export class Member {
         }));
     }
 
-    async getSkills(): Promise<string[]> {
-        const data = await MAIN.all('member-skills', [this.username]);
-        return data.map((d: { skill: string }) => d.skill);
+    async getSkills(): Promise<Skill[]> {
+        return MAIN.all('member-skills', [this.username]);
     }
 
     async changeResume(id: string) {
@@ -296,5 +318,14 @@ export class Member {
 
 
         await MAIN.run('update-resume', [id, this.username]);
+    }
+
+
+    async addToBoard() {
+        return await MAIN.run('add-to-board', [this.username]);
+    }
+
+    async removeFromBoard() {
+        return await MAIN.run('remove-from-board', [this.username]);
     }
 }

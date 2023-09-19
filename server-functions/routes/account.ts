@@ -237,38 +237,6 @@ router.post('/remove-role', Account.allowPermissions('editRoles'), async(req, re
 });
 
 
-// router.post('/add-skill', async(req, res) => {
-//     const { username, skill, years } = req.body;
-
-//     if (typeof skill !== 'string' || skill.length < 1) return Status.from('account.invalidSkill', req).send(res);
-//     if (typeof years !== 'number' || years <= 0) return Status.from('account.invalidYears', req).send(res);
-
-//     // if (username === req.session.account?.username) return Status.from('account.cannotEditSelf', req).send(res);
-
-//     const account = await Account.fromUsername(username);
-//     if (!account) return Status.from('account.notFound', req, { username }).send(res);
-
-//     const [status] = await account.addSkill({ skill, years });
-//     Status.from('skill.' + status, req, { username, skill, years }).send(res);
-
-//     req.io.emit('add-skill', username, skill);
-// });
-
-
-// router.post('/remove-skill', async(req, res) => {
-//     const { username, skill } = req.body;
-
-//     // if (username === req.session.account?.username) return Status.from('account.cannotEditSelf', req).send(res);
-
-//     const account = await Account.fromUsername(username);
-//     if (!account) return Status.from('account.notFound', req, { username }).send(res);
-
-//     const [status] = await account.removeSkill(skill);
-//     Status.from('skill.' + status, req, { username, skill }).send(res);
-
-//     req.io.emit('remove-skill', username, skill);
-// });
-
 router.get('/verify/:id', async (req, res, next) => {
     const { id } = req.params;
 
@@ -296,17 +264,17 @@ router.post('/reset-password', async(req, res) => {
         constructor: {
             title: 'Password Reset',
             message: 'Click the button below to reset your password',
-            link: process.env.DOMAIN + '/account/reset-password/' + key,
+            link: process.env.DOMAIN + '/account/reset-password?key=' + key,
             linkText: 'Reset Password'
         }
     });
 
-    Status.from('account.passwordReset', req, { username }).send(res);
+    Status.from('account.passwordResetRequest', req, { username }).send(res);
 });
 
-router.get('/reset-password/:key', async(req, res) => {
-    const { key } = req.params;
-    const account = await Account.fromPasswordChangeKey(key);
+router.get('/reset-password', async(req, res) => {
+    const { key } = req.query;
+    const account = await Account.fromPasswordChangeKey(key as string);
     if (!account) return Status.from('account.invalidPasswordRequestKey', req).send(res);
 
     const template = await getTemplate('account/reset-password');
@@ -392,7 +360,8 @@ router.post('/change-picture', fileStream({
         'png',
         'jpg',
         'jpeg'
-    ]
+    ],
+    maxFileSize: 1024 * 1024 * 5
 }), async(req, res) => {
     const { body: { username }, file } = req;
     const id = file?.id;
@@ -401,22 +370,9 @@ router.post('/change-picture', fileStream({
     const account = await Account.fromUsername(username);
     if (!account) return Status.from('account.notFound', req, { username }).send(res);
 
-    const status = await account.change(AccountDynamicProperty.picture, id);
+    const status = await account.changePicture(id + file.ext);
 
     Status.from('account.' + status, req, { username, picture: id }).send(res);
 });
-
-// router.post('/change-bio', Account.allowPermissions('editUsers'), async(req, res) => {
-//     const { username, bio } = req.body;
-
-//     const account = await Account.fromUsername(username);
-//     if (!account) return Status.from('account.notFound', req, { username }).send(res);
-
-//     const status = await account.changeBio(bio);
-
-//     Status.from('account.' + status, req, { username, bio }).send(res);
-
-//     req.io.emit('change-bio', username, bio);
-// });
 
 export default router;

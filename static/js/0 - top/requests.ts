@@ -12,6 +12,18 @@ type StreamOptions = {
     }
 };
 
+type StatusMessage = {
+    title: string;
+    message: string;
+    status: 'success' | 'warning' | 'error' | 'info' | 'danger';
+    code: number;
+    instructions: string;
+    redirect?: string;
+    data?: any;
+}
+
+CBS_Toast.container.subcomponents.container.addClass('end-0');
+document.body.querySelector('main')?.prepend(CBS_Toast.container.el);
 
 class ServerRequest {
     static readonly all: ServerRequest[] = [];
@@ -56,7 +68,7 @@ class ServerRequest {
     }
 
 
-    static async stream(url: string, files: FileList, options?: StreamOptions): Promise<void> {
+    static async stream(url: string, files: FileList, body?: any, options?: StreamOptions): Promise<void> {
         return new Promise(async (res, rej) => {
             if (typeof url !== 'string') 
                 return res(
@@ -94,6 +106,10 @@ class ServerRequest {
                     for (const key in options.headers) {
                         xhr.setRequestHeader('X-Custom-' + key, options.headers[key]);
                     }
+                }
+
+                if (body) {
+                    xhr.setRequestHeader('X-Body', JSON.stringify(body));
                 }
     
                 // when done, do next file
@@ -200,17 +216,36 @@ class ServerRequest {
         });
     }
 
-    static notify(data: any) {
+    static notify(data: StatusMessage) {
         const status = capitalize(fromCamelCase(data.status));
+
+        if (data.status === 'error') data.status = 'danger';
 
         let message = `${status}: ${data.message}`;
 
-        if(data.data) {
-            for (const [key, value] of Object.entries(data.data)) {
-                message += `\n${key}: ${value}`;
-            }
+        // if(data.data) {
+        //     for (const [key, value] of Object.entries(data.data)) {
+        //         message += `\n${key}: ${value}`;
+        //     }
+        // }
+
+        const t = CBS.createElement('toast', {
+            dismiss: 5000,
+            title: data.title,
+            body: message,
+            color: data.status as CBS_Color
+        });
+
+        switch(data.status) {
+            case 'danger':
+            case 'success':
+                t.subcomponents.body.addClass('text-light');
+                break;
+            default:
+                t.subcomponents.body.addClass('text-dark');
+                break;
         }
 
-        return CBS.alert(message);
+        t.show();
     }
 }

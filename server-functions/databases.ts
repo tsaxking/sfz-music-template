@@ -94,6 +94,16 @@ type QueryName = {
         'update-resume': [
             string,
             string
+        ],
+        'add-to-board': [
+            string
+        ],
+        'remove-from-board': [
+            string
+        ],
+        'update-picture': [
+            string,
+            string
         ]
     }
     exec: {};
@@ -148,10 +158,6 @@ type QueryName = {
     }
     each: {};
 }
-
-
-
-
 
 
 type QueryType = 

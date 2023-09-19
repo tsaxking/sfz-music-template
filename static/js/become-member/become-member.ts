@@ -1,11 +1,4 @@
-enum MembershipStatus {
-    pending = 'pending',
-    accepted = 'accepted',
-    rejected = 'rejected',
-    notMember = 'notMember',
-    notAllowed = 'notAllowed',
-    twicePending = 'twicePending'
-}
+
 
 
 

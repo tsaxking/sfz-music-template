@@ -7,11 +7,10 @@ class AccountEditForm {
         email: CBS_Input;
         firstName: CBS_Input;
         lastName: CBS_Input;
-        picture: CBS_Input;
+        picture: CBS_FileInput;
     };
 
     public readonly collections: {
-        skills: ProfileListElCollection;
         roles: ProfileListElCollection;
     }
 
@@ -19,6 +18,20 @@ class AccountEditForm {
 
     constructor(public readonly account: Account) {
         this.container = CBS.createElement('container');
+
+
+        this.container.append(
+            CBS.createElement('button', {
+                color: 'primary'
+            }).append('Edit Member Information').on('click', () => {
+                this.account.member?.manageModal();
+            }),
+            CBS.createElement('button', {
+                color: 'secondary'
+            }).append('Change Password').on('click', () => {
+                this.account.changePasswordModal();
+            })
+        );
 
         this.inputs = {
             username: CBS.createElement('input', {
@@ -41,15 +54,17 @@ class AccountEditForm {
                     type: 'text'
                 }
             }),
-            picture: CBS.createElement('input-file', {
-                attributes: {
-                    type: 'file'
-                }
-            })
+            picture: CBS.createElement('input-file')
         };
 
+        this.inputs.picture.accept = [
+            '.png',
+            '.jpg',
+            '.jpeg',
+            '.svg'
+        ];
+
         this.collections = {
-            skills: new ProfileListElCollection(),
             roles: new ProfileListElCollection()
         };
 
@@ -150,11 +165,6 @@ class AccountEditForm {
         );
 
         this.newUpdate(
-            'change-picture',
-            () => this.inputs.picture.value = this.account.picture
-        );
-
-        this.newUpdate(
             'add-role',
             () => {
                 const { roles } = this.account;
@@ -181,7 +191,7 @@ class AccountEditForm {
     }
 
     private newUpdate(name: string, callback: (...args: any[]) => void) {
-        const update = new ViewUpdate(name, null, callback, this.account.filterUsername);
+        const update = new ViewUpdate(name, null, callback, (username) => this.account.filterUsername(username));
         this.viewUpdates.push(update);
         return update;
     }
@@ -330,11 +340,6 @@ class Account {
                 a.roles
             )));
 
-        Account.accounts = accounts.reduce((acc, a) => {
-            acc[a.username] = a;
-            return acc;
-        }, {} as { [username: string]: Account });
-
         return accounts;
     }
 
@@ -353,7 +358,7 @@ class Account {
         memberInfo?: {
             bio: string;
             title: string;
-            skills: string[];
+            skills: Skill[];
             resume: string|null;
             status: MembershipStatus;
         }
@@ -363,11 +368,6 @@ class Account {
         }
 
         if (memberInfo) {
-            console.log('account', 
-            {
-                ...memberInfo,
-                username: this.username
-            });
             this.member = new Member(
                 {
                     ...memberInfo,
@@ -418,7 +418,9 @@ class Account {
     }
 
     async changePicture(files: FileList) {
-        return ServerRequest.stream('/account/change-picture', files);
+        return ServerRequest.stream('/account/change-picture', files, {
+            username: this.username
+        });
     }
 
     async changeFirstName(firstName: string) {
@@ -453,6 +455,36 @@ class Account {
         return ServerRequest.post('/account/remove-role', {
             username: this.username,
             role
+        });
+    }
+
+
+
+    changePasswordModal(): CBS_Modal {
+        const modal = CBS.createElement('modal', {
+            buttons: [
+                CBS.createElement('button', {
+                    text: 'Request Password Change',
+                    color: 'secondary'
+                }).on('click', () => {
+                    this.requestPasswordChange();
+                })
+            ],
+            destroyOnHide: true,
+            title: 'Password Change'
+        });
+
+        modal.body.append('Click "Request Password Change" to send an email to your account with a link to change your password.');
+
+        modal.show();
+
+        return modal;
+    }
+
+
+    async requestPasswordChange() {
+        return ServerRequest.post('/account/reset-password', {
+            username: this.username
         });
     }
 

@@ -99,16 +99,16 @@ export class Session {
         return session;
     }
 
-    static addSocket(socket: Socket): boolean {
-        const cookie = socket.handshake.headers.cookie;
-        if (!cookie) return false;
-        const { id } = parseCookie(cookie) as { id: string };
-        if (!id) return false;
-        const session = Session.sessions[id];
-        if (!session) return false;
-        session.setSocket(socket);
-        return true;
-    }
+    // static addSocket(socket: Socket): boolean {
+    //     const cookie = socket.handshake.headers.cookie;
+    //     if (!cookie) return false;
+    //     const { id } = parseCookie(cookie) as { id: string };
+    //     if (!id) return false;
+    //     const session = Session.sessions[id];
+    //     if (!session) return false;
+    //     session.setSocket(socket);
+    //     return true;
+    // }
 
 
 
@@ -119,42 +119,42 @@ export class Session {
     prevUrl?: string;
     
     
-    private readonly sockets: {
-        socket: Socket,
-        queue: SocketEmit[]
-    }[] = [];
-    readonly socket = {
-        emit: (event: string, ...args: any[]) => {
-            this.sockets.forEach(s => {
-                if (!s.socket.connected) return s.queue.push({ 
-                    event, 
-                    args,
-                    time: new Date()
-                });
+    // private readonly sockets: {
+    //     socket: Socket,
+    //     queue: SocketEmit[]
+    // }[] = [];
+    // readonly socket = {
+    //     emit: (event: string, ...args: any[]) => {
+    //         this.sockets.forEach(s => {
+    //             if (!s.socket.connected) return s.queue.push({ 
+    //                 event, 
+    //                 args,
+    //                 time: new Date()
+    //             });
                 
-                s.socket.emit(event, ...args);
-            });
-        },
-        to: (room: string) => {
-            return {
-                emit: (event: string, ...args: any[]) => {
-                    for (const s of this.sockets) {
-                        if (!s.socket.rooms.has(room)) continue;
-                        if (!s.socket.connected) {
-                            s.queue.push({ 
-                                event, 
-                                args, 
-                                room,
-                                time: new Date()
-                            });
-                            continue;
-                        }
-                        s.socket.to(room).emit(event, ...args);
-                    }
-                }
-            }
-        }
-    }
+    //             s.socket.emit(event, ...args);
+    //         });
+    //     },
+    //     to: (room: string) => {
+    //         return {
+    //             emit: (event: string, ...args: any[]) => {
+    //                 for (const s of this.sockets) {
+    //                     if (!s.socket.rooms.has(room)) continue;
+    //                     if (!s.socket.connected) {
+    //                         s.queue.push({ 
+    //                             event, 
+    //                             args, 
+    //                             room,
+    //                             time: new Date()
+    //                         });
+    //                         continue;
+    //                     }
+    //                     s.socket.to(room).emit(event, ...args);
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
 
     constructor(req?: CustomRequest, res?: Response) {
         if (req) this.ip = getClientIp(req);
@@ -167,20 +167,20 @@ export class Session {
         });
     }
 
-    setSocket(socket: Socket) {
-        this.sockets.push({
-            socket,
-            queue: []
-        });
-    }
+    // setSocket(socket: Socket) {
+    //     this.sockets.push({
+    //         socket,
+    //         queue: []
+    //     });
+    // }
 
-    getSocket(req: Request): Socket|undefined {
-        const cookie = req.headers.cookie;
-        if (!cookie) throw new Error('No cookie');
-        const socket = this.sockets.find(s => s.socket.id === req.body.socketId);
-        // if (!socket) throw new Error('No socket');
-        return socket?.socket;
-    }
+    // getSocket(req: Request): Socket|undefined {
+    //     const cookie = req.headers.cookie;
+    //     if (!cookie) throw new Error('No cookie');
+    //     const socket = this.sockets.find(s => s.socket.id === req.body.socketId);
+    //     // if (!socket) throw new Error('No socket');
+    //     return socket?.socket;
+    // }
 
     signIn(account: Account) {
         this.account = account;

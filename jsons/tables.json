@@ -156,6 +156,12 @@
                 "edit": true,
                 "description": "Whether the member is verified",
                 "init": "verified INTEGER NOT NULL"
+            },
+            "board": {
+                "type": "boolean",
+                "edit": true,
+                "description": "Whether the member is on the board",
+                "init": "board INTEGER NOT NULL DEFAULT 0"
             }
         }
     },

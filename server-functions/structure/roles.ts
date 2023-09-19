@@ -23,7 +23,6 @@ export type RoleName =
 
 
 export default class Role {
-
     static allowRoles(...role: RoleName[]): NextFunction {
         const fn = async (req: Request, res: Response, next: NextFunction) => {
             const { session } = req;

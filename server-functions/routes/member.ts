@@ -171,15 +171,18 @@ router.post('/change-title', async (req, res) => {
 });
 
 router.post('/add-skill', async (req, res) => {
-    const { username, skill } = req.body;
+    const { username, skill, years } = req.body;
 
     const m = await Member.get(username);
     if (!m) return Status.from('member.memberNotFound', req).send(res);
 
-    await m.addSkill(skill);
+    await m.addSkill({
+        skill,
+        years
+    });
 
     Status.from('member.addSkill', req, { username }).send(res);
-    req.io.emit('add-skill', username, skill);
+    req.io.emit('add-skill', username, skill, years);
 });
 
 router.post('/remove-skill', async (req, res) => {

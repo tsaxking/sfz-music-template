@@ -213,7 +213,19 @@ app.get('/*', async (req, res, next) => {
 });
 
 
+app.get('/about-member/:member', async (req, res, next) => {
+    const { member } = req.params;
 
+    const m = await Member.get(member);
+    if (!m) return Status.from('member.notFound', req).send(res);
+    const a = await Account.fromUsername(member);
+    if (!a) return Status.from('account.notFound', req).send(res);
+
+    res.send(await getTemplate('sfz-music/member', {
+        ...a,
+        ...m
+    }));
+});
 
 
 

@@ -1,19 +1,23 @@
+class MemberProfile extends Page {
+    constructor(name: string) {
+        super(name);
+    }
+
+    openProfile(): void {
+        if (!Account.current) return; // If no account is set, it'll be handled by the Account.onSetAccount event
+        const form = Account.current.editForm();
+        this.dom.clearElements();
+        this.dom.append(form.container.el);
+    }
+}
 
 
+const memberProfile = new MemberProfile('Profile');
 
-const memberProfile = new Page('Profile');
-
-
-memberProfile.data.open = () => {
-    if (!Account.current) return; // If no account is set, it'll be handled by the Account.onSetAccount event
-    const form = Account.current.editForm();
-    memberProfile.dom.clearElements();
-    memberProfile.dom.append(form.container.el);
-};
 
 
 memberProfile.on(PageEvent.OPEN, () => {
-    memberProfile.data.open();
+    memberProfile.openProfile();
 });
 
 
@@ -21,5 +25,5 @@ memberProfile.on(PageEvent.OPEN, () => {
 // ▀▄█ █▀  █▄▀ █▀█  █  █▄▄ ▄█▀ 
 
 Account.onSetAccount(() => {
-    memberProfile.data.open();
+    memberProfile.openProfile();
 });

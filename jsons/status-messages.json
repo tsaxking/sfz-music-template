@@ -138,7 +138,20 @@
         "code": 200,
         "instructions": "You can now log in!"
     },
-
+    "account.passwordResetRequest": {
+        "title": "Accounts",
+        "message": "Password reset request sent to your email",
+        "status": "success",
+        "code": 200,
+        "instructions": "Please follow the instructions in the email to reset your password."
+    },
+    "account.success": {
+        "title": "Accounts",
+        "message": "Account updated",
+        "status": "success",
+        "code": 200,
+        "instructions": ""
+    },
 
         
     // █▀▄ ▄▀▄ █   ██▀ ▄▀▀ 
@@ -351,7 +364,7 @@
         "code": 404,
         "instructions": ""
     },
-    "files.tooLarge": {
+    "file.tooLarge": {
         "title": "Files",
         "message": "File too large",
         "status": "error",
@@ -432,6 +445,13 @@
         "message": "Your resume has been updated",
         "status": "success",
         "code": 200,
+        "instructions": ""
+    },
+    "member.cannotManage": {
+        "title": "Membership",
+        "message": "You cannot manage this member",
+        "status": "error",
+        "code": 404,
         "instructions": ""
     }
 }

@@ -26,6 +26,8 @@ type FileStreamOptions = {
  * @returns {(req: any, res: any, next: any) => unknown}
  */
 export const fileStream = (opts?: FileStreamOptions): NextFunction => {
+    if (!fs.existsSync(path.resolve(__dirname, '../uploads'))) fs.mkdirSync(path.resolve(__dirname, '../uploads'));
+
     const fn = async(req: Request, res: Response, next: NextFunction) => {
         let { maxFileSize, extensions } = opts || {};
         extensions = extensions?.map(e => e.toLowerCase()) || [];
@@ -42,7 +44,8 @@ export const fileStream = (opts?: FileStreamOptions): NextFunction => {
                 'x-file-name': fileName,
                 'x-file-size': fileSize,
                 'x-file-type': fileType,
-                'x-file-ext': fileExt
+                'x-file-ext': fileExt,
+                'x-body': body
             }
         } = req;
 
@@ -75,11 +78,14 @@ export const fileStream = (opts?: FileStreamOptions): NextFunction => {
         req.on('data', (chunk) => {
             file.write(chunk);
             total += chunk.length;
-            console.log('Uploaded', formatBytes(total), formatBytes(+(fileSize || '')), `(${Math.round(total / +(fileSize || '') * 100)}% )`);
+            console.log('Uploaded', formatBytes(total).string, formatBytes(+(fileSize || '')).string, `(${Math.round(total / +(fileSize || '') * 100)}% )`);
         });
 
         req.on('end', () => {
             file.end();
+
+            req.body = body ? JSON.parse(body as string) : undefined;
+
             req.file = {
                 id: fileId,
                 name: fileName as string || '',

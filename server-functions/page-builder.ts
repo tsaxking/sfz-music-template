@@ -4,6 +4,31 @@ import { getJSON, getTemplate } from './files';
 import { NextFunction, Request, Response } from 'express';
 import { MAIN } from './databases';
 import { fromSnakeCase, capitalize, toSnakeCase } from './structure/text';
+import { Server } from 'socket.io';
+import { Session } from './structure/sessions';
+import { SocketWrapper } from './structure/socket';
+
+
+declare global {
+    namespace Express {
+        interface Request {
+            session: Session;
+            start: number;
+            io: Server;
+            file?: {
+                id: string;
+                name: string;
+                size: number;
+                type: string;
+                ext: string;
+                contentType: string;
+                filename: string
+            }
+            socketIO?: SocketWrapper;
+        }
+    }
+}
+
 
 const builds: {
     [key: string]: (req?: Request) => Promise<string>;
@@ -25,13 +50,15 @@ const builds: {
 
     '/home': async () => {
         const board = await MAIN.all('board');
+        console.log({board});
         const members = await MAIN.all('account-member-join');
+        console.log({members})
 
         const getUserInfo = (user: any) => {
             return {
                 name: `${user.firstName} ${user.lastName}`,
                 title: user.title,
-                picture: user.picture
+                picture: user.picture || ''
             }
         }
         return await await getTemplate('sfz-music/home', {
@@ -39,8 +66,6 @@ const builds: {
                 members: members.map(getUserInfo)
         }) as string;
     },
-
-
 };
 
 

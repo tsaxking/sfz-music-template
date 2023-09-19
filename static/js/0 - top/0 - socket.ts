@@ -49,7 +49,12 @@ class ViewUpdate {
         public readonly page: string|null,
         public readonly callback: (...args: any[]) => void,
         public readonly filter?: (...args: any[]) => boolean
-    ) {}
+    ) {
+        const listener = SocketWrapper.listeners[event];
+        if (!listener) throw new Error(`Event ${event} does not exist`);
+
+        listener.add(this);
+    }
 
     destroy() {
         const listener = SocketWrapper.listeners[this.event];
@@ -86,11 +91,19 @@ class SocketWrapper {
         SocketWrapper.listeners[event] = listener;
 
         this.socket.on(event, (/* metadata: SocketMetadata, */ ...args: any[]) => {
+            console.log('socket.on', event, ...args);
             dataUpdate(...args);
 
             for (const vu of listener.updates) {
                 // filter is a custom function that returns true if the view should update based on the data received
-                if (vu.filter && !vu.filter(...args)) continue;
+                if (vu.filter && !vu.filter(...args)) {
+                    console.log('filtering out', vu);
+                    continue;
+                }
+                if (!vu.page) {
+                    vu.callback(...args);
+                    continue;
+                }
                 if (Page.current?.name === vu.page) {
                     vu.callback(...args);
                 } else {

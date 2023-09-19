@@ -1,7 +1,7 @@
 import { MAIN } from "../databases";
 import crypto from "crypto";
 import { uuid } from "./uuid";
-import Role from "./roles";
+import Role, { Permission } from "./roles";
 import { NextFunction, Request, Response } from "express";
 import { Status } from "./status";
 import { validate } from 'deep-email-validator';
@@ -9,6 +9,8 @@ import { Email, EmailOptions, EmailType } from "./email";
 import { config } from 'dotenv';
 import Filter from 'bad-words';
 import { Member, MemberInfo, MembershipProgress } from "./member";
+import * as fs from 'fs';
+import * as path from 'path';
 
 
 config();
@@ -529,26 +531,25 @@ export default class Account {
 
 
 
+    async changePicture(id: string) {
+        if (this.picture) {
+            console.log('deleting', path.resolve(__dirname, '../../uploads', this.picture));
+            if (fs.existsSync(path.resolve(__dirname, '../../uploads', this.picture))) {
+                await fs.promises.rm(path.resolve(__dirname, '../../uploads', this.picture));
+            }
+        }
+
+        await MAIN.run('update-picture', [id, this.username]);
+        this.picture = id;
+
+        return AccountStatus.success;
+    }
 
 
 
-
-    async getPermissions(): Promise<any> {
-        // const roles = await this.getRoles();
-
-        // let perms = roles.reduce((acc, role) => {
-        //     acc.permissions.push(...role.permissions);
-        //     acc.rank = Math.min(acc.rank, role.rank);
-        //     return acc;
-        // }, {
-        //     permissions: [],
-        //     rank: Infinity
-        // } as PermissionsObject);
-
-        // perms.permissions = perms.permissions
-        //     .filter((p, i) => perms.permissions.indexOf(p) === i); // Remove duplicates
-
-        // return perms;
+    async getPermissions(): Promise<Permission[]> {
+        const roles = await this.getRoles();
+        return (await Promise.all(roles.map((role) => role.getPermissions()))).flat();
     }
 
 
@@ -632,5 +633,11 @@ export default class Account {
         this.passwordChange = null;
 
         return AccountStatus.passwordChangeSuccess;
+    }
+
+
+    async getRank(): Promise<number> {
+        const roles = await this.getRoles();
+        return Math.min(...roles.map((r) => r.rank));
     }
 };

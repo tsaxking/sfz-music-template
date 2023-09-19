@@ -4,7 +4,8 @@
     
     
     
-    SELECT * FROM MemberInfo
-INNER JOIN AccountRoles ON MemberInfo.username = AccountRoles.username
-INNER JOIN Accounts ON MemberInfo.username = Accounts.username
-WHERE AccountRoles.role = 'member' AND AccountRoles.role != 'board'
+SELECT * FROM MemberInfo
+INNER JOIN Accounts 
+ON 
+    MemberInfo.username = Accounts.username AND
+    MemberInfo.board = 0 

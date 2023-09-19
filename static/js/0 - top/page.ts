@@ -49,7 +49,7 @@ class Page {
     } = {}
     readonly updates: ViewUpdate[] = [];
     readonly lowercaseName: string;
-    readonly body: HTMLElement|null;
+    readonly body: HTMLElement;
     readonly dom: CBS_Document;
 
     constructor(
@@ -57,7 +57,7 @@ class Page {
         public readonly home?: boolean
     ) {
         this.lowercaseName = this.name.toLowerCase().replaceAll(' ', '-');
-        this.body = document.querySelector(`#${this.lowercaseName}--page-body`);
+        this.body = document.querySelector(`#${this.lowercaseName}--page-body`) as HTMLElement;
         this.dom = CBS.createDomFromElement(this.body as HTMLDivElement);
 
         Page.addPage(this);

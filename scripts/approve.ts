@@ -7,6 +7,12 @@ export const main = async (...args: string[]) => {
     // return;
     const member = await Member.get(m);
     if (!member) return console.log('Could not find member!');
-    member.accept();
+    await member.accept();
     console.log('Member approved!');
+
+    if (args.includes('board')) {
+        console.log('Adding to board...');
+        await member.addToBoard();
+        console.log('Added to board!');
+    }
 };

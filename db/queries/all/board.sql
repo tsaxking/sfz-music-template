@@ -4,7 +4,6 @@
     
     
     
-    SELECT * FROM MemberInfo
-INNER JOIN AccountRoles ON MemberInfo.username = AccountRoles.username
+SELECT * FROM MemberInfo
 INNER JOIN Accounts ON MemberInfo.username = Accounts.username
-WHERE AccountRoles.role = 'board'
+WHERE MemberInfo.board = 1
