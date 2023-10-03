@@ -265,5 +265,24 @@
             "role": "developer"
         }],
         "type": "linking"
+    },
+
+
+
+    "RolePermissions": {
+        "columns": {
+            "role": {
+                "type": "string",
+                "primaryKey": true,
+                "description": "The role for the permission",
+                "init": "role TEXT NOT NULL PRIMARY KEY"
+            },
+            "permission": {
+                "type": "string",
+                "description": "The permission for that role",
+                "init": "permission TEXT NOT NULL"
+            }
+        },
+        "type": "linking"
     }
 }

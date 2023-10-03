@@ -4,6 +4,6 @@
     
     
     
-    UPDATE Accounts
+UPDATE Accounts
 SET key = ?, salt = ?, passwordChange = ?
 WHERE username = ?
